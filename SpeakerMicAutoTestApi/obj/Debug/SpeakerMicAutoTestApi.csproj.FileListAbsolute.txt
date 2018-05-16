@@ -1,0 +1,7 @@
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\bin\Debug\SpeakerMicAutoTestApi.dll
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\bin\Debug\SpeakerMicAutoTestApi.pdb
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\bin\Debug\NAudio.dll
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\bin\Debug\NAudio.xml
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\obj\Debug\SpeakerMicAutoTestApi.csproj.CoreCompileInputs.cache
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\obj\Debug\SpeakerMicAutoTestApi.dll
+c:\users\sw2\source\repos\SpeakerMicAutoTestApi\SpeakerMicAutoTestApi\obj\Debug\SpeakerMicAutoTestApi.pdb
