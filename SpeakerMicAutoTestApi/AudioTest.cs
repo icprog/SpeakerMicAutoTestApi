@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +27,7 @@ namespace SpeakerMicAutoTestApi
         string InternalRecordFileName { get; set; }
         string ProductName { get; set; }
         int DeviceNumber { get; set; }
+        float volume { get; set; }
 
         WaveInEvent LeftSource = null;
         WaveFileWriter LeftSourceFile = null;
@@ -33,8 +35,10 @@ namespace SpeakerMicAutoTestApi
         WaveFileWriter RightSourceFile = null;
         WaveInEvent InternalSource = null;
         WaveFileWriter InternalSourceFile = null;
-        AutoResetEvent RecordEvent = null;
-       
+        AutoResetEvent[] RecordEvent = null;
+        MMDeviceEnumerator DeviceEnum = null;
+        MMDevice Device = null;
+
         public double InternalRecordThreshold
         {
             get { return internalthreshold; }
@@ -53,6 +57,18 @@ namespace SpeakerMicAutoTestApi
             set { wavfilename = value; }
         }
 
+        public float Volume
+        {
+            get
+            {
+                return volume;
+            }
+            set
+            {
+                volume = value;
+            }
+        }
+
         public AudioTest()
         {
             externalthreshold = 1800.0;
@@ -63,7 +79,7 @@ namespace SpeakerMicAutoTestApi
             InternalRecordFileName = "headset.wav";
             DeviceNumber = 0;
             ProductName = string.Empty;
-            RecordEvent = new AutoResetEvent(false);
+            RecordEvent = new AutoResetEvent[3] { new AutoResetEvent(false), new AutoResetEvent(false), new AutoResetEvent(false) };
         }
 
         public Result RunTest()
@@ -73,7 +89,8 @@ namespace SpeakerMicAutoTestApi
                 PlayFromSpeakerAndRecord(WavFileName);               
             });
 
-            RecordEvent.WaitOne();
+            RecordEvent[0].WaitOne();
+            RecordEvent[1].WaitOne();
 
             if (CalculateRMS(LeftRecordFileName) < externalthreshold)
                 return Result.LeftSpeakerFail;
@@ -86,7 +103,7 @@ namespace SpeakerMicAutoTestApi
                 PlayFromHeadSetAndRecord(WavFileName);
             });
 
-            RecordEvent.WaitOne();
+            RecordEvent[2].WaitOne();
 
             if (CalculateRMS(InternalRecordFileName) < internalthreshold)
                 return Result.InternalMicFail;
@@ -117,7 +134,8 @@ namespace SpeakerMicAutoTestApi
                 InternalSourceFile = null;
             }
 
-            RecordEvent.Set();
+            Thread.Sleep(200);
+            RecordEvent[2].Set();
         }
 
         void RightSource_DataAvailable(object sender, WaveInEventArgs e)
@@ -143,7 +161,8 @@ namespace SpeakerMicAutoTestApi
                 RightSourceFile = null;
             }
 
-            RecordEvent.Set();
+            Thread.Sleep(200);
+            RecordEvent[1].Set();
         }
 
         void LeftSource_DataAvailable(object sender, WaveInEventArgs e)
@@ -168,6 +187,9 @@ namespace SpeakerMicAutoTestApi
                 LeftSourceFile.Dispose();
                 LeftSourceFile = null;
             }
+
+            Thread.Sleep(200);
+            RecordEvent[0].Set();
         }
 
         void RecordRightSpeaker()
