@@ -14,13 +14,17 @@ namespace SpeakerMicAutoTestApi
         Pass = 0,
         LeftSpeakerFail = 1,
         RightSpeakerFail = 2,
-        InternalMicFail = 3
+        InternalMicFail = 3,
+        ExceptionFail = 4
     }
 
     public class AudioTest
     {
         double internalthreshold { get; set; }
         double externalthreshold { get; set; }
+        double leftintensity { get; set; }
+        double rightintensity { get; set; }
+        double internalintensity { get; set; }
         string wavfilename { get; set; }
         string LeftRecordFileName { get; set; }
         string RightRecordFileName { get; set; }
@@ -37,7 +41,7 @@ namespace SpeakerMicAutoTestApi
         WaveFileWriter InternalSourceFile = null;
         AutoResetEvent[] RecordEvent = null;
         MMDeviceEnumerator DeviceEnum = null;
-        MMDevice Device = null;
+        Result result;
 
         public double InternalRecordThreshold
         {
@@ -51,21 +55,40 @@ namespace SpeakerMicAutoTestApi
             set { externalthreshold = value; }
         }
 
+        public double LeftIntensity
+        {
+            get { return leftintensity; }
+        }
+
+        public double RightIntensity
+        {
+            get { return rightintensity; }
+        }
+
+        public double InternalIntensity
+        {
+            get { return internalintensity; }
+        }
+
         public string WavFileName
         {
             get { return wavfilename; }
             set { wavfilename = value; }
         }
 
-        public float Volume
+        public int Volume
         {
-            get
-            {
-                return volume;
-            }
             set
             {
-                volume = value;
+                if (value > 100)
+                    value = 100;
+
+                DeviceEnum = new MMDeviceEnumerator();
+                var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                foreach (var v in collect)
+                {
+                    v.AudioEndpointVolume.MasterVolumeLevelScalar = value / 100f;
+                }
             }
         }
 
@@ -80,35 +103,53 @@ namespace SpeakerMicAutoTestApi
             DeviceNumber = 0;
             ProductName = string.Empty;
             RecordEvent = new AutoResetEvent[3] { new AutoResetEvent(false), new AutoResetEvent(false), new AutoResetEvent(false) };
+            result = new Result();
+            leftintensity = 0.0;
+            rightintensity = 0.0;
+            internalintensity = 0.0;
         }
 
         public Result RunTest()
         {
-            Task.Factory.StartNew(() =>
+            try
             {
-                PlayFromSpeakerAndRecord(WavFileName);               
-            });
+                Volume = 100;
+                Task.Factory.StartNew(() =>
+                {
+                    PlayFromSpeakerAndRecord(WavFileName);
+                });
 
-            RecordEvent[0].WaitOne();
-            RecordEvent[1].WaitOne();
+                RecordEvent[0].WaitOne();
+                RecordEvent[1].WaitOne();
 
-            if (CalculateRMS(LeftRecordFileName) < externalthreshold)
-                return Result.LeftSpeakerFail;
+                leftintensity = CalculateRMS(LeftRecordFileName);
+                if (leftintensity < externalthreshold)
+                    result = Result.LeftSpeakerFail;
 
-            if (CalculateRMS(RightRecordFileName) < externalthreshold)
-                return Result.RightSpeakerFail;
+                rightintensity = CalculateRMS(RightRecordFileName);
+                if (rightintensity < externalthreshold)
+                    result = Result.RightSpeakerFail;
 
-            Task.Factory.StartNew(() =>
+                Task.Factory.StartNew(() =>
+                {
+                    PlayFromHeadSetAndRecord(WavFileName);
+                });
+
+                RecordEvent[2].WaitOne();
+
+                internalintensity = CalculateRMS(InternalRecordFileName);
+                if (CalculateRMS(InternalRecordFileName) < internalthreshold)
+                    result = Result.InternalMicFail;
+
+                result = Result.Pass;
+            }
+            catch (Exception ex)
             {
-                PlayFromHeadSetAndRecord(WavFileName);
-            });
+                Console.WriteLine(ex);
+                result = Result.ExceptionFail;
+            }
 
-            RecordEvent[2].WaitOne();
-
-            if (CalculateRMS(InternalRecordFileName) < internalthreshold)
-                return Result.InternalMicFail;
-
-            return Result.Pass;
+            return result;
         }
 
         void InternalSource_DataAvailable(object sender, WaveInEventArgs e)
@@ -197,7 +238,7 @@ namespace SpeakerMicAutoTestApi
             try
             {
                 RightSource = new WaveInEvent();
-                string AudioPrefix = "(2- Logitech USB Headset";
+                string AudioPrefix = "(Logitech USB Head";
 
                 for (int n = -1; n < WaveInEvent.DeviceCount; n++)
                 {
@@ -222,6 +263,7 @@ namespace SpeakerMicAutoTestApi
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
+                result = Result.ExceptionFail;
             }
         }
 
@@ -230,7 +272,7 @@ namespace SpeakerMicAutoTestApi
             try
             {
                 LeftSource = new WaveInEvent();
-                string AudioPrefix = "(Logitech USB Headset";
+                string AudioPrefix = "(Logitech USB Head";
 
                 for (int n = -1; n < WaveInEvent.DeviceCount; n++)
                 {
@@ -254,7 +296,8 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
+                result = Result.ExceptionFail;
             }
         }
 
@@ -287,7 +330,8 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
+                result = Result.ExceptionFail;
             }
         }
 
@@ -299,6 +343,7 @@ namespace SpeakerMicAutoTestApi
                 for (int n = -1; n < WaveOut.DeviceCount; n++)
                 {
                     var caps = WaveOut.GetCapabilities(n);
+                    Console.WriteLine($"{n}: {caps.ProductName}");
                     if (caps.ProductName.Contains(AudioPrefix))
                     {
                         DeviceNumber = n;
@@ -325,13 +370,14 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
+                result = Result.ExceptionFail;
             }
         }
 
         void PlayFromHeadSetAndRecord(string WavFileName)
         {
-            string AudioPrefix = "(Logitech USB Headset";
+            string AudioPrefix = "(Logitech USB Head";
             try
             {
                 for (int n = -1; n < WaveOut.DeviceCount; n++)
@@ -361,7 +407,8 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
+                result = Result.ExceptionFail;
             }
         }
 
