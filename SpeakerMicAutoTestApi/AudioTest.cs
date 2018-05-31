@@ -89,27 +89,19 @@ namespace SpeakerMicAutoTestApi
         {
             set
             {
-                try
+                if (value > 100)
+                    value = 100;
+
+                DeviceEnum = new MMDeviceEnumerator();
+                var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active);
+                foreach (var v in collect)
                 {
-                    if (value > 100)
-                        value = 100;
+                    if (v.DataFlow == DataFlow.Capture)
+                        v.AudioEndpointVolume.MasterVolumeLevelScalar = 100 / 100f;
 
-                    DeviceEnum = new MMDeviceEnumerator();
-                    var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active);
-                    foreach (var v in collect)
-                    {
-                        if (v.DataFlow == DataFlow.Capture)
-                            v.AudioEndpointVolume.MasterVolumeLevelScalar = 100 / 100f;
-
-                        if (v.DataFlow == DataFlow.Render)
-                            v.AudioEndpointVolume.Channels[0].VolumeLevelScalar = value / 100f;
-                    }
+                    if (v.DataFlow == DataFlow.Render)
+                        v.AudioEndpointVolume.Channels[0].VolumeLevelScalar = value / 100f;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                }
-
             }
         }
 
@@ -155,42 +147,54 @@ namespace SpeakerMicAutoTestApi
             try
             {
                 result = Result.Pass;
-                Task.Factory.StartNew(() =>
+                var left = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
                     RightVolume = 0;
                     PlayFromSpeakerAndRecord(WavFileName);
                 });
 
-                RecordEvent[0].WaitOne();
-                RecordEvent[1].WaitOne();
+                left.Wait();
+                
+                //Task.Factory.StartNew(() =>
+                //{
+                //    LeftVolume = 100;
+                //    RightVolume = 0;
+                //    PlayFromSpeakerAndRecord(WavFileName);
+                //});
+                //Console.WriteLine("1");
+                //RecordEvent[0].WaitOne();
+                //RecordEvent[1].WaitOne();
+                //Console.WriteLine("2");
 
                 leftintensity = CalculateRMS(LeftRecordFileName);
                 if (leftintensity < externalthreshold)
                     result = Result.LeftSpeakerFail;
 
-                Task.Factory.StartNew(() =>
+                var right = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 0;
                     RightVolume = 100;
                     PlayFromSpeakerAndRecord(WavFileName);
                 });
 
-                RecordEvent[0].WaitOne();
-                RecordEvent[1].WaitOne();
+                right.Wait();
+                //RecordEvent[0].WaitOne();
+                //RecordEvent[1].WaitOne();
 
                 rightintensity = CalculateRMS(RightRecordFileName);
                 if (rightintensity < externalthreshold)
                     result = Result.RightSpeakerFail;
 
-                Task.Factory.StartNew(() =>
+                var headset = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
                     RightVolume = 100;
                     PlayFromHeadSetAndRecord(WavFileName);
                 });
 
-                RecordEvent[2].WaitOne();
+                headset.Wait();
+                //RecordEvent[2].WaitOne();
 
                 internalintensity = CalculateRMS(InternalRecordFileName);
                 if (CalculateRMS(InternalRecordFileName) < internalthreshold)
@@ -288,10 +292,11 @@ namespace SpeakerMicAutoTestApi
 
         void RecordRightSpeaker()
         {
-            try
+            //try
             {
                 RightSource = new WaveInEvent();
                 string AudioPrefix = "Logitech USB H";
+                ProductName = string.Empty;
 
                 for (int n = -1; n < WaveInEvent.DeviceCount; n++)
                 {
@@ -304,6 +309,9 @@ namespace SpeakerMicAutoTestApi
                         Console.WriteLine("Find");
                     }
                 }
+
+                if (string.IsNullOrEmpty(ProductName))
+                    throw new Exception("Fixtures audio device can not be found");
 
                 RightSource.DeviceNumber = DeviceNumber;
                 Console.WriteLine("Record device {0}",ProductName);
@@ -313,19 +321,20 @@ namespace SpeakerMicAutoTestApi
                 RightSourceFile = new WaveFileWriter(RightRecordFileName, RightSource.WaveFormat);
                 RightSource.StartRecording();
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                result = Result.ExceptionFail;
-            }
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex);
+            //    result = Result.ExceptionFail;
+            //}
         }
 
         void RecordLeftSpeaker()
         {
-            try
+            //try
             {
                 LeftSource = new WaveInEvent();
                 string AudioPrefix = "Logitech USB H";
+                ProductName = string.Empty;
 
                 for (int n = -1; n < WaveInEvent.DeviceCount; n++)
                 {
@@ -338,6 +347,9 @@ namespace SpeakerMicAutoTestApi
                         Console.WriteLine("Find");
                     }
                 }
+
+                if (string.IsNullOrEmpty(ProductName))
+                    throw new Exception("Fixtures audio device can not be found");
 
                 LeftSource.DeviceNumber = DeviceNumber;
                 Console.WriteLine("Record device {0}",ProductName);
@@ -347,19 +359,20 @@ namespace SpeakerMicAutoTestApi
                 LeftSourceFile = new WaveFileWriter(LeftRecordFileName, LeftSource.WaveFormat);
                 LeftSource.StartRecording();
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                result = Result.ExceptionFail;
-            }
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex);
+            //    result = Result.ExceptionFail;
+            //}
         }
 
         void RecordHeadSet()
         {
-            try
+            //try
             {
                 InternalSource = new WaveInEvent();
                 string AudioPrefix = "Realtek High";
+                ProductName = string.Empty;
 
                 for (int n = -1; n < WaveInEvent.DeviceCount; n++)
                 {
@@ -373,6 +386,9 @@ namespace SpeakerMicAutoTestApi
                     }
                 }
 
+                if (string.IsNullOrEmpty(ProductName))
+                    throw new Exception("Audio device can not be found");
+
                 InternalSource.DeviceNumber = DeviceNumber;
                 Console.WriteLine("Record device {0}",ProductName);
                 InternalSource.WaveFormat = new WaveFormat(44100, 1);
@@ -381,62 +397,59 @@ namespace SpeakerMicAutoTestApi
                 InternalSourceFile = new WaveFileWriter(InternalRecordFileName, InternalSource.WaveFormat);
                 InternalSource.StartRecording();
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                result = Result.ExceptionFail;
-            }
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex);
+            //    result = Result.ExceptionFail;
+            //}
         }
 
         void PlayFromSpeakerAndRecord(string WavFileName)
         {
             string AudioPrefix = "Realtek High";
             ProductName = string.Empty;
-            try
+            for (int n = -1; n < WaveOut.DeviceCount; n++)
             {
-                for (int n = -1; n < WaveOut.DeviceCount; n++)
+                var caps = WaveOut.GetCapabilities(n);
+                Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
+                if (caps.ProductName.Contains(AudioPrefix))
                 {
-                    var caps = WaveOut.GetCapabilities(n);
-                    Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
-                    if (caps.ProductName.Contains(AudioPrefix))
-                    {
-                        DeviceNumber = n;
-                        ProductName = caps.ProductName;
-                        Console.WriteLine("Find");
-                    }
-                }
-
-                //if (string.IsNullOrEmpty(ProductName))
-                    //throw new CustomException("找不到本機音源裝置");
-
-                using (var inputReader = new WaveFileReader(WavFileName))
-                using (var outputDevice = new WaveOutEvent())
-                {
-                    outputDevice.DeviceNumber = DeviceNumber;
-                    Console.WriteLine("Play device: {0}",ProductName);
-                    outputDevice.Init(inputReader);
-                    outputDevice.PlaybackStopped += new EventHandler<StoppedEventArgs>(PlayFromSpeakerStopped);
-                    outputDevice.Play();
-                    RecordLeftSpeaker();
-                    RecordRightSpeaker();
-                    while (outputDevice.PlaybackState == PlaybackState.Playing)
-                    {
-                        Thread.Sleep(500);
-                    }
+                    DeviceNumber = n;
+                    ProductName = caps.ProductName;
+                    Console.WriteLine("Find");
                 }
             }
-            catch (Exception ex)
+
+            if (string.IsNullOrEmpty(ProductName))
+                throw new Exception("Audio device can not be found");
+
+            using (var inputReader = new WaveFileReader(WavFileName))
+            using (var outputDevice = new WaveOutEvent())
             {
-                Console.WriteLine(ex);
-                result = Result.ExceptionFail;
-                //throw new CustomException("找不到本機音源裝置");
+                outputDevice.DeviceNumber = DeviceNumber;
+                Console.WriteLine("Play device: {0}", ProductName);
+                outputDevice.Init(inputReader);
+                outputDevice.PlaybackStopped += new EventHandler<StoppedEventArgs>(PlayFromSpeakerStopped);
+                outputDevice.Play();
+                RecordLeftSpeaker();
+                RecordRightSpeaker();
+                while (outputDevice.PlaybackState == PlaybackState.Playing)
+                {
+                    Thread.Sleep(500);
+                }
             }
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine("5566"+ex);
+            //    result = Result.ExceptionFail;
+            //}
         }
 
         void PlayFromHeadSetAndRecord(string WavFileName)
         {
             string AudioPrefix = "Logitech USB H";
-            try
+            ProductName = string.Empty;
+            //try
             {
                 for (int n = -1; n < WaveOut.DeviceCount; n++)
                 {
@@ -449,6 +462,9 @@ namespace SpeakerMicAutoTestApi
                         Console.WriteLine("Find");
                     }
                 }
+
+                if (string.IsNullOrEmpty(ProductName))
+                    throw new Exception("Fixtures audio device can not be found");
 
                 using (var inputReader = new WaveFileReader(WavFileName))
                 using (var outputDevice = new WaveOutEvent())
@@ -465,11 +481,11 @@ namespace SpeakerMicAutoTestApi
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                result = Result.ExceptionFail;
-            }
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex);
+            //    result = Result.ExceptionFail;
+            //}
         }
 
         void PlayFromHeadSetStopped(object sender, StoppedEventArgs e)
