@@ -1,4 +1,5 @@
 ﻿using NAudio.CoreAudioApi;
+using NAudio.CoreAudioApi.Interfaces;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -9,15 +10,6 @@ using System.Threading.Tasks;
 
 namespace SpeakerMicAutoTestApi
 {
-    class CustomException : Exception
-    {
-        public CustomException(string message)
-        {
-
-        }
-
-    }
-
     public enum Result
     {
         Pass = 0,
@@ -127,8 +119,8 @@ namespace SpeakerMicAutoTestApi
 
         public AudioTest()
         {
-            externalthreshold = 6000.0;
-            internalthreshold = 20000.0;
+            externalthreshold = 18000.0;
+            internalthreshold = 18000.0;
             wavfilename = "o95.wav";
             LeftRecordFileName = "left.wav";
             RightRecordFileName = "right.wav";
@@ -151,22 +143,10 @@ namespace SpeakerMicAutoTestApi
                 {
                     LeftVolume = 100;
                     RightVolume = 0;
-                    PlayFromSpeakerAndRecord(WavFileName);
+                    PlayFromSpeakerAndRecord(WavFileName, 0);
                 });
 
                 left.Wait();
-                
-                //Task.Factory.StartNew(() =>
-                //{
-                //    LeftVolume = 100;
-                //    RightVolume = 0;
-                //    PlayFromSpeakerAndRecord(WavFileName);
-                //});
-                //Console.WriteLine("1");
-                //RecordEvent[0].WaitOne();
-                //RecordEvent[1].WaitOne();
-                //Console.WriteLine("2");
-
                 leftintensity = CalculateRMS(LeftRecordFileName);
                 if (leftintensity < externalthreshold)
                     result = Result.LeftSpeakerFail;
@@ -175,13 +155,10 @@ namespace SpeakerMicAutoTestApi
                 {
                     LeftVolume = 0;
                     RightVolume = 100;
-                    PlayFromSpeakerAndRecord(WavFileName);
+                    PlayFromSpeakerAndRecord(WavFileName, 1);
                 });
 
                 right.Wait();
-                //RecordEvent[0].WaitOne();
-                //RecordEvent[1].WaitOne();
-
                 rightintensity = CalculateRMS(RightRecordFileName);
                 if (rightintensity < externalthreshold)
                     result = Result.RightSpeakerFail;
@@ -194,8 +171,6 @@ namespace SpeakerMicAutoTestApi
                 });
 
                 headset.Wait();
-                //RecordEvent[2].WaitOne();
-
                 internalintensity = CalculateRMS(InternalRecordFileName);
                 if (CalculateRMS(InternalRecordFileName) < internalthreshold)
                     result = Result.InternalMicFail;
@@ -209,202 +184,181 @@ namespace SpeakerMicAutoTestApi
             return result;
         }
 
-        void InternalSource_DataAvailable(object sender, WaveInEventArgs e)
+        Task<string> RecordRightSpeaker()
         {
-            if (InternalSourceFile != null)
+            var tcs = new TaskCompletionSource<string>();
+            RightSource = new WaveInEvent();
+            string AudioPrefix = "Logitech USB H";
+            ProductName = string.Empty;
+
+            for (int n = -1; n < WaveInEvent.DeviceCount; n++)
             {
-                InternalSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
-                InternalSourceFile.Flush();
-            }
-        }
-
-        void InternalSource_RecordingStopped(object sender, StoppedEventArgs e)
-        {
-            if (InternalSource != null)
-            {
-                InternalSource.Dispose();
-                InternalSource = null;
-            }
-
-            if (InternalSourceFile != null)
-            {
-                InternalSourceFile.Dispose();
-                InternalSourceFile = null;
-            }
-
-            Thread.Sleep(200);
-            RecordEvent[2].Set();
-        }
-
-        void RightSource_DataAvailable(object sender, WaveInEventArgs e)
-        {
-            if (RightSourceFile != null)
-            {
-                RightSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
-                RightSourceFile.Flush();
-            }
-        }
-
-        void RightSource_RecordingStopped(object sender, StoppedEventArgs e)
-        {
-            if (RightSource != null)
-            {
-                RightSource.Dispose();
-                RightSource = null;
-            }
-
-            if (RightSourceFile != null)
-            {
-                RightSourceFile.Dispose();
-                RightSourceFile = null;
-            }
-
-            Thread.Sleep(200);
-            RecordEvent[1].Set();
-        }
-
-        void LeftSource_DataAvailable(object sender, WaveInEventArgs e)
-        {
-            if (LeftSourceFile != null)
-            {
-                LeftSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
-                LeftSourceFile.Flush();
-            }
-        }
-
-        void LeftSource_RecordingStopped(object sender, StoppedEventArgs e)
-        {
-            if (LeftSource != null)
-            {
-                LeftSource.Dispose();
-                LeftSource = null;
-            }
-
-            if (LeftSourceFile != null)
-            {
-                LeftSourceFile.Dispose();
-                LeftSourceFile = null;
-            }
-
-            Thread.Sleep(200);
-            RecordEvent[0].Set();
-        }
-
-        void RecordRightSpeaker()
-        {
-            //try
-            {
-                RightSource = new WaveInEvent();
-                string AudioPrefix = "Logitech USB H";
-                ProductName = string.Empty;
-
-                for (int n = -1; n < WaveInEvent.DeviceCount; n++)
+                var caps = WaveInEvent.GetCapabilities(n);
+                Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
+                if (caps.ProductName.Contains(AudioPrefix))
                 {
-                    var caps = WaveInEvent.GetCapabilities(n);
-                    Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
-                    if (caps.ProductName.Contains(AudioPrefix))
-                    {
-                        DeviceNumber = n;
-                        ProductName = caps.ProductName;
-                        Console.WriteLine("Find");
-                    }
+                    DeviceNumber = n;
+                    ProductName = caps.ProductName;
+                    Console.WriteLine("Find");
+                }
+            }
+
+            if (string.IsNullOrEmpty(ProductName))
+                throw new Exception("Fixtures audio device can not be found");
+
+            RightSource.DeviceNumber = DeviceNumber;
+            Console.WriteLine("Record device {0}", ProductName);
+            RightSource.WaveFormat = new WaveFormat(44100, 1);
+            RightSource.DataAvailable += (sender, e) =>
+            {
+                if (RightSourceFile != null)
+                {
+                    RightSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
+                    RightSourceFile.Flush();
+                }
+            };
+
+            RightSource.RecordingStopped += (sender, e) =>
+            {
+                if (RightSource != null)
+                {
+                    RightSource.Dispose();
+                    RightSource = null;
                 }
 
-                if (string.IsNullOrEmpty(ProductName))
-                    throw new Exception("Fixtures audio device can not be found");
-
-                RightSource.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Record device {0}",ProductName);
-                RightSource.WaveFormat = new WaveFormat(44100, 1);
-                RightSource.DataAvailable += new EventHandler<WaveInEventArgs>(RightSource_DataAvailable);
-                RightSource.RecordingStopped += new EventHandler<StoppedEventArgs>(RightSource_RecordingStopped);
-                RightSourceFile = new WaveFileWriter(RightRecordFileName, RightSource.WaveFormat);
-                RightSource.StartRecording();
-            }
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine(ex);
-            //    result = Result.ExceptionFail;
-            //}
-        }
-
-        void RecordLeftSpeaker()
-        {
-            //try
-            {
-                LeftSource = new WaveInEvent();
-                string AudioPrefix = "Logitech USB H";
-                ProductName = string.Empty;
-
-                for (int n = -1; n < WaveInEvent.DeviceCount; n++)
+                if (RightSourceFile != null)
                 {
-                    var caps = WaveInEvent.GetCapabilities(n);
-                    Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
-                    if (caps.ProductName.Contains(AudioPrefix))
-                    {
-                        DeviceNumber = n;
-                        ProductName = caps.ProductName;
-                        Console.WriteLine("Find");
-                    }
+                    RightSourceFile.Dispose();
+                    RightSourceFile = null;
                 }
 
-                if (string.IsNullOrEmpty(ProductName))
-                    throw new Exception("Fixtures audio device can not be found");
+                Thread.Sleep(200);
+                tcs.SetResult("Done");
+                Console.WriteLine("Right record Stopped");
+            };
 
-                LeftSource.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Record device {0}",ProductName);
-                LeftSource.WaveFormat = new WaveFormat(44100, 1);
-                LeftSource.DataAvailable += new EventHandler<WaveInEventArgs>(LeftSource_DataAvailable);
-                LeftSource.RecordingStopped += new EventHandler<StoppedEventArgs>(LeftSource_RecordingStopped);
-                LeftSourceFile = new WaveFileWriter(LeftRecordFileName, LeftSource.WaveFormat);
-                LeftSource.StartRecording();
-            }
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine(ex);
-            //    result = Result.ExceptionFail;
-            //}
+            RightSourceFile = new WaveFileWriter(RightRecordFileName, RightSource.WaveFormat);
+            RightSource.StartRecording();
+            return tcs.Task;
         }
 
-        void RecordHeadSet()
+        Task<string> RecordLeftSpeaker()
         {
-            //try
-            {
-                InternalSource = new WaveInEvent();
-                string AudioPrefix = "Realtek High";
-                ProductName = string.Empty;
+            var tcs = new TaskCompletionSource<string>();
+            LeftSource = new WaveInEvent();
+            string AudioPrefix = "Logitech USB H";
+            ProductName = string.Empty;
 
-                for (int n = -1; n < WaveInEvent.DeviceCount; n++)
+            for (int n = -1; n < WaveInEvent.DeviceCount; n++)
+            {
+                var caps = WaveInEvent.GetCapabilities(n);
+                Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
+                if (caps.ProductName.Contains(AudioPrefix))
                 {
-                    var caps = WaveInEvent.GetCapabilities(n);
-                    Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
-                    if (caps.ProductName.Contains(AudioPrefix))
-                    {
-                        DeviceNumber = n;
-                        ProductName = caps.ProductName;
-                        Console.WriteLine("Find");
-                    }
+                    DeviceNumber = n;
+                    ProductName = caps.ProductName;
+                    Console.WriteLine("Find");
+                }
+            }
+
+            if (string.IsNullOrEmpty(ProductName))
+                throw new Exception("Fixtures audio device can not be found");
+
+            LeftSource.DeviceNumber = DeviceNumber;
+            Console.WriteLine("Record device {0}", ProductName);
+            LeftSource.WaveFormat = new WaveFormat(44100, 1);
+            LeftSource.DataAvailable += (sender, e) =>
+            {
+                if (LeftSourceFile != null)
+                {
+                    LeftSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
+                    LeftSourceFile.Flush();
+                }
+            };
+
+            LeftSource.RecordingStopped += (sender, e) =>
+            {
+                if (LeftSource != null)
+                {
+                    LeftSource.Dispose();
+                    LeftSource = null;
                 }
 
-                if (string.IsNullOrEmpty(ProductName))
-                    throw new Exception("Audio device can not be found");
+                if (LeftSourceFile != null)
+                {
+                    LeftSourceFile.Dispose();
+                    LeftSourceFile = null;
+                }
 
-                InternalSource.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Record device {0}",ProductName);
-                InternalSource.WaveFormat = new WaveFormat(44100, 1);
-                InternalSource.DataAvailable += new EventHandler<WaveInEventArgs>(InternalSource_DataAvailable);
-                InternalSource.RecordingStopped += new EventHandler<StoppedEventArgs>(InternalSource_RecordingStopped);
-                InternalSourceFile = new WaveFileWriter(InternalRecordFileName, InternalSource.WaveFormat);
-                InternalSource.StartRecording();
-            }
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine(ex);
-            //    result = Result.ExceptionFail;
-            //}
+                Thread.Sleep(200);
+                tcs.SetResult("Done");
+                Console.WriteLine("Left record Stopped");
+            };
+
+            LeftSourceFile = new WaveFileWriter(LeftRecordFileName, LeftSource.WaveFormat);
+            LeftSource.StartRecording();
+            return tcs.Task;
         }
 
-        void PlayFromSpeakerAndRecord(string WavFileName)
+        Task<string> RecordHeadSet()
+        {
+            var tcs = new TaskCompletionSource<string>();
+            InternalSource = new WaveInEvent();
+            string AudioPrefix = "Realtek High";
+            ProductName = string.Empty;
+
+            for (int n = -1; n < WaveInEvent.DeviceCount; n++)
+            {
+                var caps = WaveInEvent.GetCapabilities(n);
+                Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
+                if (caps.ProductName.Contains(AudioPrefix))
+                {
+                    DeviceNumber = n;
+                    ProductName = caps.ProductName;
+                    Console.WriteLine("Find");
+                }
+            }
+
+            if (string.IsNullOrEmpty(ProductName))
+                throw new Exception("Audio device can not be found");
+
+            InternalSource.DeviceNumber = DeviceNumber;
+            Console.WriteLine("Record device: {0}", ProductName);
+            InternalSource.WaveFormat = new WaveFormat(44100, 1);
+            InternalSource.DataAvailable += (sender, e) =>
+            {
+                if (InternalSourceFile != null)
+                {
+                    InternalSourceFile.Write(e.Buffer, 0, e.BytesRecorded);
+                    InternalSourceFile.Flush();
+                }
+            };
+
+            InternalSource.RecordingStopped += (sender, e) =>
+            {
+                if (InternalSource != null)
+                {
+                    InternalSource.Dispose();
+                    InternalSource = null;
+                }
+
+                if (InternalSourceFile != null)
+                {
+                    InternalSourceFile.Dispose();
+                    InternalSourceFile = null;
+                }
+
+                Thread.Sleep(200);
+                tcs.SetResult("Done");
+                Console.WriteLine("Internal record Stopped");
+            };
+
+            InternalSourceFile = new WaveFileWriter(InternalRecordFileName, InternalSource.WaveFormat);
+            InternalSource.StartRecording();
+            return tcs.Task;
+        }
+
+        void PlayFromSpeakerAndRecord(string WavFileName, int channel)
         {
             string AudioPrefix = "Realtek High";
             ProductName = string.Empty;
@@ -429,78 +383,70 @@ namespace SpeakerMicAutoTestApi
                 outputDevice.DeviceNumber = DeviceNumber;
                 Console.WriteLine("Play device: {0}", ProductName);
                 outputDevice.Init(inputReader);
-                outputDevice.PlaybackStopped += new EventHandler<StoppedEventArgs>(PlayFromSpeakerStopped);
+                outputDevice.PlaybackStopped += (sender, e) =>
+                {
+                    if (LeftSource != null)
+                        LeftSource.StopRecording();
+
+                    if (RightSource != null)
+                        RightSource.StopRecording();
+
+                    Console.WriteLine("Speaker Play Stopped");
+                };
+
                 outputDevice.Play();
-                RecordLeftSpeaker();
-                RecordRightSpeaker();
+                if (channel == 0)
+                    RecordLeftSpeaker().Wait();
+                else
+                    RecordRightSpeaker().Wait();
+
                 while (outputDevice.PlaybackState == PlaybackState.Playing)
                 {
                     Thread.Sleep(500);
                 }
             }
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine("5566"+ex);
-            //    result = Result.ExceptionFail;
-            //}
         }
 
         void PlayFromHeadSetAndRecord(string WavFileName)
         {
             string AudioPrefix = "Logitech USB H";
             ProductName = string.Empty;
-            //try
+            for (int n = -1; n < WaveOut.DeviceCount; n++)
             {
-                for (int n = -1; n < WaveOut.DeviceCount; n++)
+                var caps = WaveOut.GetCapabilities(n);
+                Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
+                if (caps.ProductName.Contains(AudioPrefix))
                 {
-                    var caps = WaveOut.GetCapabilities(n);
-                    Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
-                    if (caps.ProductName.Contains(AudioPrefix))
-                    {
-                        DeviceNumber = n;
-                        ProductName = caps.ProductName;
-                        Console.WriteLine("Find");
-                    }
-                }
-
-                if (string.IsNullOrEmpty(ProductName))
-                    throw new Exception("Fixtures audio device can not be found");
-
-                using (var inputReader = new WaveFileReader(WavFileName))
-                using (var outputDevice = new WaveOutEvent())
-                {
-                    outputDevice.DeviceNumber = DeviceNumber;
-                    Console.WriteLine("Play device: {0}",ProductName);
-                    outputDevice.Init(inputReader);
-                    outputDevice.PlaybackStopped += new EventHandler<StoppedEventArgs>(PlayFromHeadSetStopped);
-                    outputDevice.Play();
-                    RecordHeadSet();
-                    while (outputDevice.PlaybackState == PlaybackState.Playing)
-                    {
-                        Thread.Sleep(500);
-                    }
+                    DeviceNumber = n;
+                    ProductName = caps.ProductName;
+                    Console.WriteLine("Find");
                 }
             }
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine(ex);
-            //    result = Result.ExceptionFail;
-            //}
-        }
 
-        void PlayFromHeadSetStopped(object sender, StoppedEventArgs e)
-        {
-            if (InternalSource != null)
-                InternalSource.StopRecording();
-        }
+            if (string.IsNullOrEmpty(ProductName))
+                throw new Exception("Fixtures audio device can not be found");
 
-        void PlayFromSpeakerStopped(object sender, StoppedEventArgs e)
-        {
-            if (LeftSource != null)
-                LeftSource.StopRecording();
+            using (var inputReader = new WaveFileReader(WavFileName))
+            using (var outputDevice = new WaveOutEvent())
+            {
+                outputDevice.DeviceNumber = DeviceNumber;
+                Console.WriteLine("Play device: {0}", ProductName);
+                outputDevice.Init(inputReader);
+                outputDevice.PlaybackStopped += (sender, e) =>
+                {
+                    if (InternalSource != null)
+                        InternalSource.StopRecording();
 
-            if (RightSource != null)
-                RightSource.StopRecording();
+                    Console.WriteLine("Headset Play Stopped");
+                };
+
+                outputDevice.Play();
+                RecordHeadSet().Wait();
+                while (outputDevice.PlaybackState == PlaybackState.Playing)
+                {
+                    Thread.Sleep(500);
+                }
+            }
         }
 
         double CalculateRMS(string WavFileName)
@@ -526,7 +472,6 @@ namespace SpeakerMicAutoTestApi
                 Console.WriteLine("rms: {0}", Rms);
                 return Rms;
             }
-
         }
     }
 }
