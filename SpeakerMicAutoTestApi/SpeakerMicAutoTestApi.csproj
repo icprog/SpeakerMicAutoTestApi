@@ -38,6 +38,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -47,6 +48,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AudioTest.cs" />
+    <Compile Include="Bartec.cs" />
+    <Compile Include="M101B.cs" />
+    <Compile Include="Platform.cs" />
+    <Compile Include="PlatformFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
