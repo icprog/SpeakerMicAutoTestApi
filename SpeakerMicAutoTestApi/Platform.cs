@@ -43,6 +43,7 @@ namespace SpeakerMicAutoTestApi
         protected WaveFileWriter InternalSourceFile = null;
         protected MMDeviceEnumerator DeviceEnum = null;
         protected Result result;
+        public Exception exception;
 
         public Platform()
         {
@@ -55,6 +56,7 @@ namespace SpeakerMicAutoTestApi
             DeviceNumber = 0;
             ProductName = string.Empty;
             result = new Result();
+            exception = null;
             leftintensity = 10.0;
             rightintensity = 10.0;
             internalintensity = 10.0;

@@ -116,6 +116,11 @@ namespace SpeakerMicAutoTestApi
             set { platform.AudioJackRecordThreshold = value; }
         }
 
+        public Exception Exception
+        {
+            get { return platform.exception; }
+        }
+
         public double LeftIntensity
         {
             get { return platform.LeftIntensity; }

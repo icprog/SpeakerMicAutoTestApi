@@ -28,7 +28,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromSpeakerAndRecord(WavFileName, 0);
                 });
 
-                left.Wait();
+                left.Wait(7000);
+                if (!left.IsCompleted)
+                    throw new Exception("Play Left Speaker Timeout");
                 leftintensity = CalculateRMS(LeftRecordFileName);
                 if (leftintensity < externalthreshold)
                     result = Result.LeftSpeakerFail;
@@ -40,7 +42,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromSpeakerAndRecord(WavFileName, 1);
                 });
 
-                right.Wait();
+                right.Wait(7000);
+                if (!right.IsCompleted)
+                    throw new Exception("Play Right Speaker Timeout");
                 rightintensity = CalculateRMS(RightRecordFileName);
                 if (rightintensity < externalthreshold)
                     result = Result.RightSpeakerFail;
@@ -52,7 +56,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromHeadSetAndRecord(WavFileName);
                 });
 
-                headset.Wait();
+                headset.Wait(7000);
+                if (!headset.IsCompleted)
+                    throw new Exception("Play Headset Timeout");
                 internalintensity = CalculateRMS(InternalRecordFileName);
                 if (CalculateRMS(InternalRecordFileName) < internalthreshold)
                     result = Result.InternalMicFail;
@@ -61,6 +67,7 @@ namespace SpeakerMicAutoTestApi
             {
                 Debug.WriteLine(ex);
                 Console.WriteLine(ex);
+                exception = ex;
                 result = Result.ExceptionFail;
             }
 

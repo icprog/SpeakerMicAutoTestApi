@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SpeakerMicAutoTestApi
 {
-    class M101B : Platform
+    public class M101B : Platform
     {
         string AudioJackRecordFileName { get; set; }
 
@@ -40,7 +40,10 @@ namespace SpeakerMicAutoTestApi
                     PlayFromAudioJackAndRecord(WavFileName);
                 });
 
-                audiojack.Wait();
+                audiojack.Wait(7000);
+                if (!audiojack.IsCompleted)
+                    throw new Exception("Play Audio Jack Timeout");
+
                 Thread.Sleep(200);
                 audiojackintensity = CalculateRMS(AudioJackRecordFileName);
                 Debug.WriteLine("audiojackintensity {0}", audiojackintensity);
@@ -52,6 +55,7 @@ namespace SpeakerMicAutoTestApi
             {
                 Debug.WriteLine(ex);
                 Console.WriteLine(ex);
+                exception = ex;
                 return Result.ExceptionFail;
             }
 
@@ -69,7 +73,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromSpeakerAndRecord(WavFileName, 0);
                 });
 
-                left.Wait();
+                left.Wait(7000);
+                if (!left.IsCompleted)
+                    throw new Exception("Play Left Speaker Timeout");
                 Thread.Sleep(200);
                 leftintensity = CalculateRMS(LeftRecordFileName);
                 Debug.WriteLine("leftintensity {0}", leftintensity);
@@ -84,7 +90,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromSpeakerAndRecord(WavFileName, 1);
                 });
 
-                right.Wait();
+                right.Wait(7000);
+                if (!right.IsCompleted)
+                    throw new Exception("Play Right Speaker Timeout");
                 Thread.Sleep(200);
                 rightintensity = CalculateRMS(RightRecordFileName);
                 Debug.WriteLine("rightintensity {0}", rightintensity);
@@ -99,7 +107,9 @@ namespace SpeakerMicAutoTestApi
                     PlayFromHeadSetAndRecord(WavFileName);
                 });
 
-                headset.Wait();
+                headset.Wait(7000);
+                if (!headset.IsCompleted)
+                    throw new Exception("Play Headset Timeout");
                 Thread.Sleep(200);
                 internalintensity = CalculateRMS(InternalRecordFileName);
                 Debug.WriteLine("internalintensity {0}", internalintensity);
@@ -111,6 +121,7 @@ namespace SpeakerMicAutoTestApi
             {
                 Debug.WriteLine(ex);
                 Console.WriteLine(ex);
+                exception = ex;
                 return Result.ExceptionFail;
             }
 
