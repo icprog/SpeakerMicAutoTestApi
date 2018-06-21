@@ -15,10 +15,10 @@ namespace SpeakerMicAutoTestApi
 {
     public class M101B : Platform
     {
-        string AudioJackRecordFileName { get; set; }
-        List<Guid> MachineAudioDeviceList;
-        List<Guid> ExternalAudioDeviceList;
-        List<Guid> DigitalMicDeviceList;
+        protected string AudioJackRecordFileName { get; set; }
+        protected List<Guid> MachineAudioDeviceList;
+        protected List<Guid> ExternalAudioDeviceList;
+        protected List<Guid> DigitalMicDeviceList;
 
         public M101B()
         {

@@ -73,12 +73,12 @@ namespace SpeakerMicAutoTestApi
             ProductName = string.Empty;
             result = new Result();
             exception = null;
-            leftintensity = 10.0;
-            rightintensity = 10.0;
-            internalintensity = 10.0;
-            internalleftintensity = 10.0;
-            internalrightintensity = 10.0;
-            audiojackintensity = 10.0;
+            leftintensity = 0.0;
+            rightintensity = 0.0;
+            internalintensity = 0.0;
+            internalleftintensity = 0.0;
+            internalrightintensity = 0.0;
+            audiojackintensity = 0.0;
         }
 
         public double AudioJackRecordThreshold
