@@ -1,8 +1,12 @@
-﻿using NAudio.CoreAudioApi;
+﻿using IniParser;
+using IniParser.Model;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,12 +16,22 @@ namespace SpeakerMicAutoTestApi
     {
         public enum Result
         {
-            Pass = 0,
-            LeftSpeakerFail = 1,
-            RightSpeakerFail = 2,
-            InternalMicFail = 3,
-            AudioJackFail = 4,
-            ExceptionFail = 5
+            Pass,
+            LeftSpeakerFail,
+            RightSpeakerFail,
+            InternalMicFail,
+            InternalLeftMicFail,
+            InternalRightMicFail,
+            AudioJackFail,
+            ExceptionFail
+        }
+
+        public enum Channel
+        {
+            Left,
+            Right,
+            HeadSet,
+            AudioJack
         }
 
         protected double internalthreshold { get; set; }
@@ -27,20 +41,20 @@ namespace SpeakerMicAutoTestApi
         protected double leftintensity { get; set; }
         protected double rightintensity { get; set; }
         protected double internalintensity { get; set; }
+        protected double internalleftintensity { get; set; }
+        protected double internalrightintensity { get; set; }
         protected string wavfilename { get; set; }
         protected string LeftRecordFileName { get; set; }
         protected string RightRecordFileName { get; set; }
         protected string InternalRecordFileName { get; set; }
+        protected string LeftChannelFileName { get; set; }
+        protected string RightChannelFileName { get; set; }
         protected string ProductName { get; set; }
         protected int DeviceNumber { get; set; }
         protected float volume { get; set; }
 
-        protected WaveInEvent LeftSource = null;
-        protected WaveFileWriter LeftSourceFile = null;
-        protected WaveInEvent RightSource = null;
-        protected WaveFileWriter RightSourceFile = null;
-        protected WaveInEvent InternalSource = null;
-        protected WaveFileWriter InternalSourceFile = null;
+        protected WaveInEvent WavSource = null;
+        protected WaveFileWriter WavSourceFile = null;
         protected MMDeviceEnumerator DeviceEnum = null;
         protected Result result;
         public Exception exception;
@@ -53,6 +67,8 @@ namespace SpeakerMicAutoTestApi
             LeftRecordFileName = "left.wav";
             RightRecordFileName = "right.wav";
             InternalRecordFileName = "headset.wav";
+            LeftChannelFileName = "channel1.wav";
+            RightChannelFileName = "channel2.wav";
             DeviceNumber = 0;
             ProductName = string.Empty;
             result = new Result();
@@ -60,6 +76,8 @@ namespace SpeakerMicAutoTestApi
             leftintensity = 10.0;
             rightintensity = 10.0;
             internalintensity = 10.0;
+            internalleftintensity = 10.0;
+            internalrightintensity = 10.0;
             audiojackintensity = 10.0;
         }
 
@@ -99,6 +117,16 @@ namespace SpeakerMicAutoTestApi
         public double InternalIntensity
         {
             get { return internalintensity; }
+        }
+
+        public double InternalLeftIntensity
+        {
+            get { return internalleftintensity; }
+        }
+
+        public double InternalRightIntensity
+        {
+            get { return internalrightintensity; }
         }
 
         public string WavFileName
@@ -147,13 +175,21 @@ namespace SpeakerMicAutoTestApi
             }
         }
 
+        protected string GetIniValue(string SectionName, string Key)
+        {
+            var parser = new FileIniDataParser();
+            parser.Parser.Configuration.CommentString = ";";
+            var FilePath = Assembly.GetEntryAssembly().Location;
+            IniData data = parser.ReadFile(Path.Combine(Directory.GetParent(FilePath).FullName, "TestProgramConfig.ini"));
+            var FormatKey = string.Format("{0}.{1}", SectionName, Key);
+            Console.WriteLine(data.GetKey(FormatKey));
+            return data.GetKey(FormatKey);
+        }
+
         public abstract Result RunTest();
         public abstract Result AudioJackTest();
-        protected abstract Task<string> RecordRightSpeaker();
-        protected abstract Task<string> RecordLeftSpeaker();
-        protected abstract Task<string> RecordHeadSet();
-        protected abstract void PlayFromSpeakerAndRecord(string WavFileName, int channel);
-        protected abstract void PlayFromHeadSetAndRecord(string WavFileName);
+        protected abstract Task<string> Record(Channel Channel);
+        protected abstract void PlayAndRecord(string WavFileName, Channel Channel);
         protected abstract double CalculateRMS(string WavFileName);
     }
 }

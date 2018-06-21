@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,10 +15,12 @@ namespace SpeakerMicAutoTestApi
 {
     public class AudioTest
     {
-        PlatformFactory platformfactory = null;
+        [DllImport(@"WMIO2.dll")]
+        public static extern bool WinIO_ReadFromECSpace(uint uiAddress, out uint uiValue);
+
         Platform platform = null;
-        const string M101BProductName = "Agile_X";
-        const string BartecProductName = "Agile_X_IS";
+        const string M101BProductName = "IB80";
+        const string BartecProductName = "BTZ1";
 
         public AudioTest()
         {
@@ -26,12 +29,13 @@ namespace SpeakerMicAutoTestApi
 
         void Init()
         {
+            string Model = string.Empty;
             try
             {
-                switch (GetPlatform())
+                WinIO_GetECVersion(out Model);
+                switch (Model.Substring(0,4))
                 {
                     case M101BProductName:
-                    case "M101B":
                         platform = new M101B();
                         Console.WriteLine("M101B");
                         break;
@@ -41,7 +45,6 @@ namespace SpeakerMicAutoTestApi
                         break;
                     default:
                         throw new Exception("Platform not support");
-                        break;
                 }
             }
             catch (Exception ex)
@@ -49,10 +52,57 @@ namespace SpeakerMicAutoTestApi
                 Debug.WriteLine(ex);
                 Console.WriteLine(ex);
             }
-
         }
 
-        string GetPlatform()
+        public static bool WinIO_GetECVersion(out string version)
+        {
+            uint bValue;
+            version = string.Empty;
+
+            WinIO_ReadFromECSpace(0x00, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x01, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x02, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x03, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x04, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x05, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x06, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
+
+            WinIO_ReadFromECSpace(0x07, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
+
+            return true;
+        }
+
+        string GetBIOSPlatform()
         {
             string BIOSMainBoard = "";
             ManagementScope managementScope;
@@ -86,7 +136,6 @@ namespace SpeakerMicAutoTestApi
 
             return BIOSMainBoard;
         }
-
 
         public Platform.Result RunTest()
         {
@@ -134,6 +183,16 @@ namespace SpeakerMicAutoTestApi
         public double InternalIntensity
         {
             get { return platform.InternalIntensity; }
+        }
+
+        public double InternalLeftIntensity
+        {
+            get { return platform.InternalLeftIntensity; }
+        }
+
+        public double InternalRightIntensity
+        {
+            get { return platform.InternalRightIntensity; }
         }
 
         public double AudioJackIntensity
