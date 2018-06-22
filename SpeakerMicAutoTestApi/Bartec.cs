@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SpeakerMicAutoTestApi
 {
-    class Bartec : Platform
+    public class Bartec : Platform
     {
         List<Guid> MachineAudioDeviceList;
         List<Guid> ExternalAudioDeviceList;

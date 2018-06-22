@@ -31,12 +31,15 @@ namespace SpeakerMicAutoTestApi
             Left,
             Right,
             HeadSet,
-            AudioJack
+            AudioJack,
+            Fan
         }
 
         protected double internalthreshold { get; set; }
         protected double externalthreshold { get; set; }
         protected double audiojackthreshold { get; set; }
+        protected double fanthreshold { get; set; }
+        protected double fanintensity { get; set; }
         protected double audiojackintensity { get; set; }
         protected double leftintensity { get; set; }
         protected double rightintensity { get; set; }
@@ -63,6 +66,8 @@ namespace SpeakerMicAutoTestApi
         {
             externalthreshold = 18000.0;
             internalthreshold = 18000.0;
+            audiojackthreshold = 18000.0;
+            fanthreshold = 18000.0;
             wavfilename = "o95.wav";
             LeftRecordFileName = "left.wav";
             RightRecordFileName = "right.wav";
@@ -79,6 +84,13 @@ namespace SpeakerMicAutoTestApi
             internalleftintensity = 0.0;
             internalrightintensity = 0.0;
             audiojackintensity = 0.0;
+            fanintensity = 0.0;
+        }
+
+        public double FanRecordThreshold
+        {
+            get { return fanthreshold; }
+            set { fanthreshold = value; }
         }
 
         public double AudioJackRecordThreshold
@@ -97,6 +109,11 @@ namespace SpeakerMicAutoTestApi
         {
             get { return externalthreshold; }
             set { externalthreshold = value; }
+        }
+
+        public double FanIntensity
+        {
+            get { return fanintensity; }
         }
 
         public double AudioJackIntensity

@@ -142,6 +142,12 @@ namespace SpeakerMicAutoTestApi
             return platform.AudioJackTest();
         }
 
+        public double FanRecordThreshold
+        {
+            get { return platform.FanRecordThreshold; }
+            set { platform.FanRecordThreshold = value; }
+        }
+
         public double InternalRecordThreshold
         {
             get { return platform.InternalRecordThreshold; }
@@ -163,6 +169,11 @@ namespace SpeakerMicAutoTestApi
         public Exception Exception
         {
             get { return platform.exception; }
+        }
+
+        public double FanIntensity
+        {
+            get { return platform.FanIntensity; }
         }
 
         public double LeftIntensity

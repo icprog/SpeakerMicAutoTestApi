@@ -72,6 +72,7 @@
     <Compile Include="AudioTest.cs" />
     <Compile Include="Bartec.cs" />
     <Compile Include="M101B.cs" />
+    <Compile Include="M101H.cs" />
     <Compile Include="Platform.cs" />
     <Compile Include="PlatformFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

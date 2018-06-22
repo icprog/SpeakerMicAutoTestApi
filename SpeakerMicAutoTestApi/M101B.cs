@@ -23,9 +23,6 @@ namespace SpeakerMicAutoTestApi
         public M101B()
         {
             AudioJackRecordFileName = "audiojack.wav";
-            externalthreshold = 20.0;
-            internalthreshold = 20.0;
-            audiojackthreshold = 20.0;
             MachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
             ExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
             DigitalMicDeviceList = GetIniValue("AUDIO", "DigitalMicDevice").Split(',').ToList().ConvertAll(Guid.Parse);
