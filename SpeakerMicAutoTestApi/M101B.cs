@@ -16,12 +16,14 @@ namespace SpeakerMicAutoTestApi
     public class M101B : Platform
     {
         protected string AudioJackRecordFileName { get; set; }
+        protected string UsbAudioDeviceName { get; set; }
         protected List<Guid> MachineAudioDeviceList;
         protected List<Guid> ExternalAudioDeviceList;
         protected List<Guid> DigitalMicDeviceList;
 
         public M101B()
         {
+            UsbAudioDeviceName = "USB Audio";
             AudioJackRecordFileName = "audiojack.wav";
             MachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
             ExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
@@ -32,14 +34,18 @@ namespace SpeakerMicAutoTestApi
         {
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
+            Dictionary<int, string> di = new Dictionary<int, string>();
 
-            if (Channel == Channel.Left || Channel == Channel.Right || Channel == Channel.AudioJack)
+            switch (Channel)
             {
-                AudioDeviceList = MachineAudioDeviceList;
-            }
-            else if (Channel == Channel.HeadSet)
-            {
-                AudioDeviceList = ExternalAudioDeviceList;
+                case Channel.Left:
+                case Channel.Right:
+                case Channel.AudioJack:
+                    AudioDeviceList = MachineAudioDeviceList;
+                    break;
+                case Channel.HeadSet:
+                    AudioDeviceList = ExternalAudioDeviceList;
+                    break;
             }
 
             for (int n = -1; n < WaveOut.DeviceCount; n++)
@@ -53,6 +59,7 @@ namespace SpeakerMicAutoTestApi
                 {
                     if (caps.ManufacturerGuid.Equals(v))
                     {
+                        di.Add(n, caps.ProductName);
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
                         Console.WriteLine("Find");
@@ -60,18 +67,31 @@ namespace SpeakerMicAutoTestApi
                 }
             }
 
-            if (string.IsNullOrEmpty(ProductName) && (Channel == Channel.Left || Channel == Channel.Right))
-                throw new Exception("Machine audio device not found");
-            else if (string.IsNullOrEmpty(ProductName) && Channel == Channel.HeadSet)
-                throw new Exception("External audio device not found");
-            else if (string.IsNullOrEmpty(ProductName) && Channel == Channel.AudioJack)
-                throw new Exception("Audio Jack device not found");
+            switch (Channel)
+            {
+                case Channel.Left:
+                case Channel.Right:
+                    if (string.IsNullOrEmpty(ProductName))
+                        throw new Exception("Machine audio device not found");
+                    break;
+                case Channel.HeadSet:
+                    if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                        throw new Exception("External audio device not found");
+
+                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
+                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Value;
+                    break;
+                case Channel.AudioJack:
+                    if (string.IsNullOrEmpty(ProductName))
+                        throw new Exception("Audio Jack device not found");
+                    break;
+            }
 
             using (var inputReader = new WaveFileReader(WavFileName))
             using (var outputDevice = new WaveOutEvent())
             {
                 outputDevice.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Play device: {0}", ProductName);
+                Console.WriteLine("Play device: ###### {0} ######", ProductName);
                 outputDevice.Init(inputReader);
                 outputDevice.PlaybackStopped += (sender, e) =>
                 {
@@ -82,14 +102,22 @@ namespace SpeakerMicAutoTestApi
                 };
 
                 outputDevice.Play();
-                if (Channel == Channel.Left)
-                    Record(Channel.Left).Wait();
-                else if (Channel == Channel.Right)
-                    Record(Channel.Right).Wait();
-                else if (Channel == Channel.AudioJack)
-                    Record(Channel.AudioJack).Wait();
-                else if (Channel == Channel.HeadSet)
-                    Record(Channel.HeadSet).Wait();
+
+                switch (Channel)
+                {
+                    case Channel.Left:
+                        Record(Channel.Left).Wait();
+                        break;
+                    case Channel.Right:
+                        Record(Channel.Right).Wait();
+                        break;
+                    case Channel.AudioJack:
+                        Record(Channel.AudioJack).Wait();
+                        break;
+                    case Channel.HeadSet:
+                        Record(Channel.HeadSet).Wait();
+                        break;
+                }
 
                 while (outputDevice.PlaybackState == PlaybackState.Playing)
                 {
@@ -203,18 +231,20 @@ namespace SpeakerMicAutoTestApi
             WavSource = new WaveInEvent();
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
+            Dictionary<int, string> di = new Dictionary<int, string>();
 
-            if (Channel == Channel.AudioJack)
+            switch (Channel)
             {
-                AudioDeviceList = MachineAudioDeviceList;
-            }
-            else if (Channel == Channel.Left || Channel == Channel.Right)
-            {
-                AudioDeviceList = ExternalAudioDeviceList;
-            }
-            else if (Channel == Channel.HeadSet)
-            {
-                AudioDeviceList = DigitalMicDeviceList;
+                case Channel.Left:
+                case Channel.Right:
+                    AudioDeviceList = ExternalAudioDeviceList;
+                    break;
+                case Channel.AudioJack:
+                    AudioDeviceList = MachineAudioDeviceList;
+                    break;
+                case Channel.HeadSet:
+                    AudioDeviceList = DigitalMicDeviceList;
+                    break;
             }
 
             for (int n = -1; n < WaveInEvent.DeviceCount; n++)
@@ -229,6 +259,7 @@ namespace SpeakerMicAutoTestApi
                 {
                     if (caps.ManufacturerGuid.Equals(v))
                     {
+                        di.Add(n, caps.ProductName);
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
                         Console.WriteLine("Find");
@@ -236,15 +267,28 @@ namespace SpeakerMicAutoTestApi
                 }
             }
 
-            if (string.IsNullOrEmpty(ProductName) && Channel == Channel.AudioJack)
-                throw new Exception("Audio Jack device not found");
-            else if (string.IsNullOrEmpty(ProductName) && (Channel == Channel.Left || Channel == Channel.Right))
-                throw new Exception("External audio device not found");
-            else if (string.IsNullOrEmpty(ProductName) && Channel == Channel.HeadSet)
-                throw new Exception("Digital Mic device not found");
+            switch (Channel)
+            {
+                case Channel.Left:
+                case Channel.Right:
+                    if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                        throw new Exception("External audio device not found");
+
+                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
+                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Value;
+                    break;
+                case Channel.HeadSet:
+                    if (string.IsNullOrEmpty(ProductName))
+                        throw new Exception("Digital Mic device not found");
+                    break;
+                case Channel.AudioJack:
+                    if (string.IsNullOrEmpty(ProductName))
+                        throw new Exception("Audio Jack device not found");
+                    break;
+            }
 
             WavSource.DeviceNumber = DeviceNumber;
-            Console.WriteLine("Record device {0}", ProductName);
+            Console.WriteLine("Record device ###### {0} ######", ProductName);
             WavSource.WaveFormat = new WaveFormat(44100, 1);
             WavSource.DataAvailable += (sender, e) =>
             {
@@ -274,14 +318,21 @@ namespace SpeakerMicAutoTestApi
                 Console.WriteLine("Record Stopped");
             };
 
-            if (Channel == Channel.Left)
-                WavSourceFile = new WaveFileWriter(LeftRecordFileName, WavSource.WaveFormat);
-            else if (Channel == Channel.Right)
-                WavSourceFile = new WaveFileWriter(RightRecordFileName, WavSource.WaveFormat);
-            else if (Channel == Channel.HeadSet)
-                WavSourceFile = new WaveFileWriter(InternalRecordFileName, WavSource.WaveFormat);
-            else if (Channel == Channel.AudioJack)
-                WavSourceFile = new WaveFileWriter(AudioJackRecordFileName, WavSource.WaveFormat);
+            switch (Channel)
+            {
+                case Channel.Left:
+                    WavSourceFile = new WaveFileWriter(LeftRecordFileName, WavSource.WaveFormat);
+                    break;
+                case Channel.Right:
+                    WavSourceFile = new WaveFileWriter(RightRecordFileName, WavSource.WaveFormat);
+                    break;
+                case Channel.HeadSet:
+                    WavSourceFile = new WaveFileWriter(InternalRecordFileName, WavSource.WaveFormat);
+                    break;
+                case Channel.AudioJack:
+                    WavSourceFile = new WaveFileWriter(AudioJackRecordFileName, WavSource.WaveFormat);
+                    break;
+            }
 
             WavSource.StartRecording();
             return tcs.Task;

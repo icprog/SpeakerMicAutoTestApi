@@ -10,21 +10,6 @@ using System.Threading.Tasks;
 
 namespace SpeakerMicAutoTestApi
 {
-    public class AudioDeviceComparer : IComparer<string>
-    {
-        string pattern = @"\(\D+.*";
-        public int Compare(string x, string y)
-        {
-            if (Regex.IsMatch(x, pattern))
-                return -1;
-
-            if (Regex.IsMatch(y, pattern))
-                return 1;
-
-            return string.Compare(x, y, true);
-        }
-    }
-
     public class M101H : M101B
     {
         protected string FanRecordFileName { get; set; }
@@ -34,7 +19,6 @@ namespace SpeakerMicAutoTestApi
         {
             FanRecordFileName = "Fan.wav";
             FanRecordDeviceList = GetIniValue("AUDIO", "FanRecordDeviceList").Split(',').ToList().ConvertAll(Guid.Parse);
-
         }
 
         public override Result RunTest()
@@ -91,6 +75,23 @@ namespace SpeakerMicAutoTestApi
                 Debug.WriteLine("internalthreshold {0}", internalthreshold);
                 if (internalintensity < internalthreshold)
                     return Result.InternalMicFail;
+
+                var fan = Task.Factory.StartNew(() =>
+                {
+                    LeftVolume = 100;
+                    RightVolume = 100;
+                    PlayAndRecord(WavFileName, Channel.Fan);
+                });
+
+                fan.Wait(7000);
+                if (!fan.IsCompleted)
+                    throw new Exception("Fan Timeout");
+                Thread.Sleep(200);
+                fanintensity = CalculateRMS(FanRecordFileName);
+                Debug.WriteLine("internalintensity {0}", fanintensity);
+                Debug.WriteLine("internalthreshold {0}", fanthreshold);
+                if (fanintensity < fanthreshold)
+                    return Result.FanRecordFail;
             }
             catch (Exception ex)
             {
@@ -151,23 +152,22 @@ namespace SpeakerMicAutoTestApi
 
             switch (Channel)
             {
-
                 case Channel.Left:
                 case Channel.Right:
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2)
+                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName))
+                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
 
-                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Key;
-                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Value;
+                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
+                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Value;
                     break;
                 case Channel.HeadSet:
                     if (string.IsNullOrEmpty(ProductName))
@@ -195,15 +195,8 @@ namespace SpeakerMicAutoTestApi
                     break;
             }
 
-            if (string.IsNullOrEmpty(ProductName) && Channel == Channel.AudioJack)
-                throw new Exception("Audio Jack device not found");
-            else if (string.IsNullOrEmpty(ProductName) && (Channel == Channel.Left || Channel == Channel.Right))
-                throw new Exception("External audio device not found");
-            else if (string.IsNullOrEmpty(ProductName) && Channel == Channel.HeadSet)
-                throw new Exception("Digital Mic device not found");
-
             WavSource.DeviceNumber = DeviceNumber;
-            Console.WriteLine("Record device {0}", ProductName);
+            Console.WriteLine("Record device ###### {0} ######", ProductName);
             WavSource.WaveFormat = new WaveFormat(44100, 1);
             WavSource.DataAvailable += (sender, e) =>
             {
@@ -299,7 +292,6 @@ namespace SpeakerMicAutoTestApi
 
             switch (Channel)
             {
-                
                 case Channel.Left:
                 case Channel.Right:
                     if (string.IsNullOrEmpty(ProductName))
@@ -309,12 +301,12 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2)
+                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName))
+                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
 
@@ -329,12 +321,12 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2)
+                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("Fan record device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName))
+                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
                             throw new Exception("Fan record device not found");
                     }
 
@@ -347,7 +339,7 @@ namespace SpeakerMicAutoTestApi
             using (var outputDevice = new WaveOutEvent())
             {
                 outputDevice.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Play device: {0}", ProductName);
+                Console.WriteLine("Play device: ###### {0} ######", ProductName);
                 outputDevice.Init(inputReader);
                 outputDevice.PlaybackStopped += (sender, e) =>
                 {
@@ -384,7 +376,5 @@ namespace SpeakerMicAutoTestApi
                 }
             }
         }
-
-
     }
 }

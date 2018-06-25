@@ -8,10 +8,26 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SpeakerMicAutoTestApi
 {
+    public class AudioDeviceComparer : IComparer<string>
+    {
+        string pattern = @"\(\D+.*";
+        public int Compare(string x, string y)
+        {
+            if (Regex.IsMatch(x, pattern))
+                return -1;
+
+            if (Regex.IsMatch(y, pattern))
+                return 1;
+
+            return string.Compare(x, y, true);
+        }
+    }
+
     public abstract class Platform
     {
         public enum Result
@@ -23,6 +39,7 @@ namespace SpeakerMicAutoTestApi
             InternalLeftMicFail,
             InternalRightMicFail,
             AudioJackFail,
+            FanRecordFail,
             ExceptionFail
         }
 

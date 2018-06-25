@@ -28,88 +28,92 @@ namespace SpeakerMicAutoTestApi
         const string BartecProductName = "BTZ1";
         const string M101HProductName = "IH80";
 
-        //public static bool WinIO_GetECVersion(out string version)
-        //{
-        //    uint bValue;
-        //    version = string.Empty;
+        #region EC
+        public static bool WinIO_GetECVersion(out string version)
+        {
+            uint bValue;
+            version = string.Empty;
 
-        //    WinIO_ReadFromECSpace(0x00, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x5F;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x00, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x01, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x5F;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x01, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x02, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x5F;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x02, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x5F;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x03, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x20;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x03, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x04, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x20;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x04, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x05, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x20;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x05, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x06, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x20;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x06, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    WinIO_ReadFromECSpace(0x07, out bValue);
-        //    if ((bValue < 0x20) || (bValue > 0x7A))
-        //        bValue = 0x20;
-        //    version += Convert.ToChar(bValue).ToString();
+            WinIO_ReadFromECSpace(0x07, out bValue);
+            if ((bValue < 0x20) || (bValue > 0x7A))
+                bValue = 0x20;
+            version += Convert.ToChar(bValue).ToString();
 
-        //    return true;
-        //}
+            return true;
+        }
+        #endregion
 
-        //string GetBIOSPlatform()
-        //{
-        //    string BIOSMainBoard = "";
-        //    ManagementScope managementScope;
-        //    ConnectionOptions connectionOptions;
+        #region GetBIOSPlatform
+        string GetBIOSPlatform()
+        {
+            string BIOSMainBoard = "";
+            ManagementScope managementScope;
+            ConnectionOptions connectionOptions;
 
-        //    try
-        //    {
-        //        connectionOptions = new ConnectionOptions();
-        //        connectionOptions.Impersonation = ImpersonationLevel.Impersonate;
-        //        connectionOptions.Authentication = AuthenticationLevel.Default;
-        //        connectionOptions.EnablePrivileges = true;
+            try
+            {
+                connectionOptions = new ConnectionOptions();
+                connectionOptions.Impersonation = ImpersonationLevel.Impersonate;
+                connectionOptions.Authentication = AuthenticationLevel.Default;
+                connectionOptions.EnablePrivileges = true;
 
-        //        managementScope = new ManagementScope();
-        //        managementScope.Path = new ManagementPath(@"\\" + Environment.MachineName + @"\root\CIMV2");
-        //        managementScope.Options = connectionOptions;
+                managementScope = new ManagementScope();
+                managementScope.Path = new ManagementPath(@"\\" + Environment.MachineName + @"\root\CIMV2");
+                managementScope.Options = connectionOptions;
 
-        //        SelectQuery selectQuery = new SelectQuery("SELECT * FROM Win32_ComputerSystemProduct");
-        //        ManagementObjectSearcher managementObjectSearch = new ManagementObjectSearcher(managementScope, selectQuery);
-        //        ManagementObjectCollection managementObjectCollection = managementObjectSearch.Get();
+                SelectQuery selectQuery = new SelectQuery("SELECT * FROM Win32_ComputerSystemProduct");
+                ManagementObjectSearcher managementObjectSearch = new ManagementObjectSearcher(managementScope, selectQuery);
+                ManagementObjectCollection managementObjectCollection = managementObjectSearch.Get();
 
-        //        foreach (ManagementObject managementObject in managementObjectCollection)
-        //        {
-        //            BIOSMainBoard = (string)managementObject["Name"];
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Debug.WriteLine(ex);
-        //        Console.WriteLine(ex);
-        //    }
+                foreach (ManagementObject managementObject in managementObjectCollection)
+                {
+                    BIOSMainBoard = (string)managementObject["Name"];
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                Console.WriteLine(ex);
+            }
 
-        //    return BIOSMainBoard;
-        //}
+            return BIOSMainBoard;
+        }
+        #endregion
 
         void InitializePlatform(string ECVersion)
         {
