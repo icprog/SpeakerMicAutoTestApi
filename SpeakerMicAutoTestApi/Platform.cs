@@ -18,6 +18,9 @@ namespace SpeakerMicAutoTestApi
         string pattern = @"\(\D+.*";
         public int Compare(string x, string y)
         {
+            if (string.Equals(x, y))
+                return 0;
+
             if (Regex.IsMatch(x, pattern))
                 return -1;
 

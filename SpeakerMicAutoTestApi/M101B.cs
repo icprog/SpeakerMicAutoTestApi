@@ -75,7 +75,7 @@ namespace SpeakerMicAutoTestApi
                         throw new Exception("Machine audio device not found");
                     break;
                 case Channel.HeadSet:
-                    if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                    if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                         throw new Exception("External audio device not found");
 
                     DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
@@ -271,7 +271,7 @@ namespace SpeakerMicAutoTestApi
             {
                 case Channel.Left:
                 case Channel.Right:
-                    if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                    if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                         throw new Exception("External audio device not found");
 
                     DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;

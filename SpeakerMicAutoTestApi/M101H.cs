@@ -157,12 +157,12 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
+                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("External audio device not found");
                     }
 
@@ -301,12 +301,12 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
+                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("External audio device not found");
                     }
 
@@ -321,12 +321,12 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.ContainsValue(UsbAudioDeviceName))
+                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("Fan record device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.ContainsValue(UsbAudioDeviceName))
+                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
                             throw new Exception("Fan record device not found");
                     }
 
