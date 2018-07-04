@@ -15,10 +15,51 @@ namespace SpeakerMicAutoTestApi
         protected string FanRecordFileName { get; set; }
         protected List<Guid> FanRecordDeviceList;
 
-        public M101H()
+        public M101H(bool IsJsonConfig = false)
         {
             FanRecordFileName = "Fan.wav";
-            FanRecordDeviceList = GetIniValue("AUDIO", "FanRecordDeviceList").Split(',').ToList().ConvertAll(Guid.Parse);
+            if (IsJsonConfig)
+            {
+                FanRecordDeviceList = GetConfigValue("FanRecordDeviceList")
+                    .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToList()
+                    .ConvertAll(Guid.Parse);
+            }
+            else
+            {
+                FanRecordDeviceList = GetIniValue("AUDIO", "FanRecordDeviceList").Split(',').ToList().ConvertAll(Guid.Parse);
+            }
+        }
+
+        public override Result FanTest()
+        {
+            try
+            {
+                var fan = Task.Factory.StartNew(() =>
+                {
+                    LeftVolume = 100;
+                    RightVolume = 100;
+                    PlayAndRecord(WavFileName, Channel.Fan);
+                });
+
+                fan.Wait(7000);
+                if (!fan.IsCompleted)
+                    throw new Exception("Fan Timeout");
+                Thread.Sleep(200);
+                fanintensity = CalculateRMS(FanRecordFileName);
+                if (fanintensity > fanthreshold)
+                    return Result.FanRecordFail;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex);
+                Console.WriteLine(ex);
+                exception = ex;
+                return Result.ExceptionFail;
+            }
+
+            return Result.Pass;
         }
 
         public override Result RunTest()
@@ -37,8 +78,6 @@ namespace SpeakerMicAutoTestApi
                     throw new Exception("Play Left Speaker Timeout");
                 Thread.Sleep(200);
                 leftintensity = CalculateRMS(LeftRecordFileName);
-                Debug.WriteLine("leftintensity {0}", leftintensity);
-                Debug.WriteLine("externalthreshold {0}", externalthreshold);
                 if (leftintensity < externalthreshold)
                     return Result.LeftSpeakerFail;
 
@@ -54,8 +93,6 @@ namespace SpeakerMicAutoTestApi
                     throw new Exception("Play Right Speaker Timeout");
                 Thread.Sleep(200);
                 rightintensity = CalculateRMS(RightRecordFileName);
-                Debug.WriteLine("rightintensity {0}", rightintensity);
-                Debug.WriteLine("externalthreshold {0}", externalthreshold);
                 if (rightintensity < externalthreshold)
                     return Result.RightSpeakerFail;
 
@@ -71,31 +108,14 @@ namespace SpeakerMicAutoTestApi
                     throw new Exception("Play Headset Timeout");
                 Thread.Sleep(200);
                 internalintensity = CalculateRMS(InternalRecordFileName);
-                Debug.WriteLine("internalintensity {0}", internalintensity);
-                Debug.WriteLine("internalthreshold {0}", internalthreshold);
+                internalleftintensity = internalintensity;
+                internalrightintensity = internalintensity;
                 if (internalintensity < internalthreshold)
                     return Result.InternalMicFail;
-
-                var fan = Task.Factory.StartNew(() =>
-                {
-                    LeftVolume = 100;
-                    RightVolume = 100;
-                    PlayAndRecord(WavFileName, Channel.Fan);
-                });
-
-                fan.Wait(7000);
-                if (!fan.IsCompleted)
-                    throw new Exception("Fan Timeout");
-                Thread.Sleep(200);
-                fanintensity = CalculateRMS(FanRecordFileName);
-                Debug.WriteLine("internalintensity {0}", fanintensity);
-                Debug.WriteLine("internalthreshold {0}", fanthreshold);
-                if (fanintensity < fanthreshold)
-                    return Result.FanRecordFail;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Trace.WriteLine(ex);
                 Console.WriteLine(ex);
                 exception = ex;
                 return Result.ExceptionFail;
@@ -135,8 +155,7 @@ namespace SpeakerMicAutoTestApi
                 var caps = WaveInEvent.GetCapabilities(n);
                 Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
                 Console.WriteLine(caps.ManufacturerGuid);
-                Debug.WriteLine("Record device {0}: {1}", n, caps.ProductName);
-                Debug.WriteLine(caps.ManufacturerGuid);
+                Trace.WriteLine(caps.ManufacturerGuid);
 
                 foreach (var v in AudioDeviceList)
                 {
@@ -276,8 +295,7 @@ namespace SpeakerMicAutoTestApi
                 var caps = WaveOut.GetCapabilities(n);
                 Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
                 Console.WriteLine(caps.ManufacturerGuid);
-                Debug.WriteLine("Play device {0}: {1}", n, caps.ProductName);
-                Debug.WriteLine(caps.ManufacturerGuid);
+                Trace.WriteLine(caps.ManufacturerGuid);
                 foreach (var v in AudioDeviceList)
                 {
                     if (caps.ManufacturerGuid.Equals(v))

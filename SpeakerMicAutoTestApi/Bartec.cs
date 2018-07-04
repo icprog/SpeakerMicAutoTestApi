@@ -14,10 +14,32 @@ namespace SpeakerMicAutoTestApi
         List<Guid> MachineAudioDeviceList;
         List<Guid> ExternalAudioDeviceList;
 
-        public Bartec()
+        public Bartec(bool IsJsonConfig = false)
         {
-            MachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
-            ExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
+            if(IsJsonConfig)
+            {
+                MachineAudioDeviceList = GetConfigValue("MachineAudioDevice")
+                    .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToList()
+                    .ConvertAll(Guid.Parse);
+
+                ExternalAudioDeviceList = GetConfigValue("ExternalAudioDevice")
+                    .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToList()
+                    .ConvertAll(Guid.Parse);
+            }
+            else
+            {
+                MachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
+                ExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
+            }
+        }
+
+        public override Result FanTest()
+        {
+            throw new NotImplementedException();
         }
 
         public override Result AudioJackTest()
@@ -46,8 +68,7 @@ namespace SpeakerMicAutoTestApi
                 var caps = WaveInEvent.GetCapabilities(n);
                 Console.WriteLine("Record device {0}: {1}", n, caps.ProductName);
                 Console.WriteLine(caps.ManufacturerGuid);
-                Debug.WriteLine("Record device {0}: {1}", n, caps.ProductName);
-                Debug.WriteLine(caps.ManufacturerGuid);
+                Trace.WriteLine(caps.ManufacturerGuid);
 
                 foreach (var v in AudioDeviceList)
                 {
@@ -161,7 +182,7 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Trace.WriteLine(ex);
                 Console.WriteLine(ex);
                 exception = ex;
                 return Result.ExceptionFail;
@@ -189,8 +210,7 @@ namespace SpeakerMicAutoTestApi
                 var caps = WaveOut.GetCapabilities(n);
                 Console.WriteLine("Play device {0}: {1}", n, caps.ProductName);
                 Console.WriteLine(caps.ManufacturerGuid);
-                Debug.WriteLine("Play device {0}: {1}", n, caps.ProductName);
-                Debug.WriteLine(caps.ManufacturerGuid);
+                Trace.WriteLine(caps.ManufacturerGuid);
                 foreach (var v in AudioDeviceList)
                 {
                     if (caps.ManufacturerGuid.Equals(v))

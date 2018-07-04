@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace SpeakerMicAutoTestApi
 {
@@ -88,7 +89,7 @@ namespace SpeakerMicAutoTestApi
             internalthreshold = 18000.0;
             audiojackthreshold = 18000.0;
             fanthreshold = 18000.0;
-            wavfilename = "o95.wav";
+            wavfilename = "WinmateAudioTest.wav";
             LeftRecordFileName = "left.wav";
             RightRecordFileName = "right.wav";
             InternalRecordFileName = "headset.wav";
@@ -98,13 +99,13 @@ namespace SpeakerMicAutoTestApi
             ProductName = string.Empty;
             result = new Result();
             exception = null;
-            leftintensity = 0.0;
-            rightintensity = 0.0;
-            internalintensity = 0.0;
-            internalleftintensity = 0.0;
-            internalrightintensity = 0.0;
-            audiojackintensity = 0.0;
-            fanintensity = 0.0;
+            leftintensity = -1;
+            rightintensity = -1;
+            internalintensity = -1;
+            internalleftintensity = -1;
+            internalrightintensity = -1;
+            audiojackintensity = -1;
+            fanintensity = -1;
         }
 
         public double FanRecordThreshold
@@ -223,8 +224,21 @@ namespace SpeakerMicAutoTestApi
             return data.GetKey(FormatKey);
         }
 
+        protected string GetConfigValue(string Key)
+        {
+            JObject JObject = JObject.Parse(File.ReadAllText(GetFullPath("config.json")));
+            return JObject[Key].ToString();
+        }
+
+        string GetFullPath(string path)
+        {
+            var exepath = System.AppDomain.CurrentDomain.BaseDirectory;
+            return Path.Combine(exepath, path);
+        }
+
         public abstract Result RunTest();
         public abstract Result AudioJackTest();
+        public abstract Result FanTest();
         protected abstract Task<string> Record(Channel Channel);
         protected abstract void PlayAndRecord(string WavFileName, Channel Channel);
         protected abstract double CalculateRMS(string WavFileName);

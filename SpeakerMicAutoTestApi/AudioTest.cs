@@ -18,15 +18,17 @@ namespace SpeakerMicAutoTestApi
         [DllImport(@"WMIO2.dll")]
         public static extern bool WinIO_ReadFromECSpace(uint uiAddress, out uint uiValue);
 
-        public AudioTest(string ECVersion)
+        public AudioTest(string ECVersion, bool IsJsonConfig = false)
         {
-            InitializePlatform(ECVersion);
+            InitializePlatform(ECVersion, IsJsonConfig);
         }
 
         Platform platform = null;        
         const string M101BProductName = "IB80";
+        const string M101BModelName = "M101B";
         const string BartecProductName = "BTZ1";
         const string M101HProductName = "IH80";
+        const string M101HModelName = "M101H";
 
         #region EC
         public static bool WinIO_GetECVersion(out string version)
@@ -107,7 +109,7 @@ namespace SpeakerMicAutoTestApi
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                Trace.WriteLine(ex);
                 Console.WriteLine(ex);
             }
 
@@ -115,20 +117,22 @@ namespace SpeakerMicAutoTestApi
         }
         #endregion
 
-        void InitializePlatform(string ECVersion)
+        void InitializePlatform(string ECVersion,bool IsJsonConfig = false)
         {
-            switch (ECVersion)
+            switch (ECVersion.ToUpper())
             {
                 case M101BProductName:
-                    platform = new M101B();
+                case M101BModelName:
+                    platform = new M101B(IsJsonConfig);
                     Console.WriteLine("M101B");
                     break;
                 case BartecProductName:
-                    platform = new Bartec();
+                    platform = new Bartec(IsJsonConfig);
                     Console.WriteLine("Bartec");
                     break;
                 case M101HProductName:
-                    platform = new M101H();
+                case M101HModelName:
+                    platform = new M101H(IsJsonConfig);
                     Console.WriteLine("M101H");
                     break;
                 default:
