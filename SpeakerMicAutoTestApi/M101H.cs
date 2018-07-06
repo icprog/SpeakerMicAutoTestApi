@@ -17,7 +17,7 @@ namespace SpeakerMicAutoTestApi
 
         public M101H(bool IsJsonConfig = false)
         {
-            FanRecordFileName = "Fan.wav";
+            FanRecordFileName = GetFullPath("Fan.wav");
             if (IsJsonConfig)
             {
                 FanRecordDeviceList = GetConfigValue("FanRecordDeviceList")

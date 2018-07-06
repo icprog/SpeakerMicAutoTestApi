@@ -24,7 +24,7 @@ namespace SpeakerMicAutoTestApi
         public M101B(bool IsJsonConfig = false)
         {
             UsbAudioDeviceName = "USB Audio";
-            AudioJackRecordFileName = "audiojack.wav";
+            AudioJackRecordFileName = GetFullPath("audiojack.wav");
 
             if (IsJsonConfig)
             {

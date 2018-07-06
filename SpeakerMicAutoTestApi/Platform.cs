@@ -89,12 +89,10 @@ namespace SpeakerMicAutoTestApi
             internalthreshold = 18000.0;
             audiojackthreshold = 18000.0;
             fanthreshold = 18000.0;
-            wavfilename = "WinmateAudioTest.wav";
-            LeftRecordFileName = "left.wav";
-            RightRecordFileName = "right.wav";
-            InternalRecordFileName = "headset.wav";
-            LeftChannelFileName = "channel1.wav";
-            RightChannelFileName = "channel2.wav";
+            wavfilename = GetFullPath("WinmateAudioTest.wav");
+            LeftRecordFileName = GetFullPath("left.wav");
+            RightRecordFileName = GetFullPath("right.wav");
+            InternalRecordFileName = GetFullPath("headset.wav");
             DeviceNumber = 0;
             ProductName = string.Empty;
             result = new Result();
@@ -230,9 +228,10 @@ namespace SpeakerMicAutoTestApi
             return JObject[Key].ToString();
         }
 
-        string GetFullPath(string path)
+        protected string GetFullPath(string path)
         {
             var exepath = System.AppDomain.CurrentDomain.BaseDirectory;
+            Console.WriteLine(Path.Combine(exepath, path));
             return Path.Combine(exepath, path);
         }
 

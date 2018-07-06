@@ -150,6 +150,11 @@ namespace SpeakerMicAutoTestApi
             return platform.AudioJackTest();
         }
 
+        public Platform.Result FanTest()
+        {
+            return platform.FanTest();
+        }
+
         public double FanRecordThreshold
         {
             get { return platform.FanRecordThreshold; }
