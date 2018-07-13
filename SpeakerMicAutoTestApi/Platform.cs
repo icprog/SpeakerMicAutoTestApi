@@ -93,6 +93,8 @@ namespace SpeakerMicAutoTestApi
             LeftRecordFileName = GetFullPath("left.wav");
             RightRecordFileName = GetFullPath("right.wav");
             InternalRecordFileName = GetFullPath("headset.wav");
+            LeftChannelFileName = GetFullPath("channel1.wav");
+            RightChannelFileName = GetFullPath("channel2.wav");
             DeviceNumber = 0;
             ProductName = string.Empty;
             result = new Result();
@@ -168,7 +170,7 @@ namespace SpeakerMicAutoTestApi
         public string WavFileName
         {
             get { return wavfilename; }
-            set { wavfilename = value; }
+            set { wavfilename = GetFullPath(value); }
         }
 
         public int LeftVolume

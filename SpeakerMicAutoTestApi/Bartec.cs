@@ -287,7 +287,7 @@ namespace SpeakerMicAutoTestApi
             for (int n = 0; n < writers.Length; n++)
             {
                 var format = new WaveFormat(reader.WaveFormat.SampleRate, 16, 1);
-                writers[n] = new WaveFileWriter(String.Format("channel{0}.wav", n + 1), format);
+                writers[n] = new WaveFileWriter(GetFullPath(String.Format("channel{0}.wav", n + 1)), format);
             }
 
             while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
