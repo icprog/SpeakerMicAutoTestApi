@@ -132,6 +132,8 @@ namespace SpeakerMicAutoTestApi
         {
             try
             {
+                DeleteRecordWav();
+                MicrophoneBoost = 30.0f;
                 var left = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
@@ -139,7 +141,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.Left);
                 });
 
-                left.Wait(7000);
+                left.Wait(AudioTimeout);
                 if (!left.IsCompleted)
                     throw new Exception("Play Left Speaker Timeout");
                 leftintensity = CalculateRMS(LeftRecordFileName);
@@ -153,7 +155,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.Right);
                 });
 
-                right.Wait(7000);
+                right.Wait(AudioTimeout);
                 if (!right.IsCompleted)
                     throw new Exception("Play Right Speaker Timeout");
                 rightintensity = CalculateRMS(RightRecordFileName);
@@ -167,7 +169,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.HeadSet);
                 });
 
-                headset.Wait(7000);
+                headset.Wait(AudioTimeout);
                 if (!headset.IsCompleted)
                     throw new Exception("Play Headset Timeout");
                 SplitTwoChannel(InternalRecordFileName);
@@ -186,6 +188,11 @@ namespace SpeakerMicAutoTestApi
                 Console.WriteLine(ex);
                 exception = ex;
                 return Result.ExceptionFail;
+            }
+            finally
+            {
+                DeleteRecordWav();
+                MicrophoneBoost = 0.0f;
             }
 
             return Result.Pass;

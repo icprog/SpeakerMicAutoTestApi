@@ -12,12 +12,11 @@ namespace SpeakerMicAutoTestApi
 {
     public class M101H : M101B
     {
-        protected string FanRecordFileName { get; set; }
         protected List<Guid> FanRecordDeviceList;
+        SetupApi SetupApi = null;
 
         public M101H(bool IsJsonConfig = false)
         {
-            FanRecordFileName = GetFullPath("Fan.wav");
             if (IsJsonConfig)
             {
                 FanRecordDeviceList = GetConfigValue("FanRecordDeviceList")
@@ -36,6 +35,8 @@ namespace SpeakerMicAutoTestApi
         {
             try
             {
+                DeleteRecordWav();
+                MicrophoneBoost = 30.0f;
                 var fan = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
@@ -43,7 +44,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.Fan);
                 });
 
-                fan.Wait(7000);
+                fan.Wait(AudioTimeout);
                 if (!fan.IsCompleted)
                     throw new Exception("Fan Timeout");
                 Thread.Sleep(200);
@@ -58,6 +59,11 @@ namespace SpeakerMicAutoTestApi
                 exception = ex;
                 return Result.ExceptionFail;
             }
+            finally
+            {
+                DeleteRecordWav();
+                MicrophoneBoost = 0.0f;
+            }
 
             return Result.Pass;
         }
@@ -66,6 +72,8 @@ namespace SpeakerMicAutoTestApi
         {
             try
             {
+                DeleteRecordWav();
+                MicrophoneBoost = 30.0f;
                 var left = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
@@ -73,7 +81,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.Left);
                 });
 
-                left.Wait(7000);
+                left.Wait(AudioTimeout);
                 if (!left.IsCompleted)
                     throw new Exception("Play Left Speaker Timeout");
                 Thread.Sleep(200);
@@ -88,7 +96,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.Right);
                 });
 
-                right.Wait(7000);
+                right.Wait(AudioTimeout);
                 if (!right.IsCompleted)
                     throw new Exception("Play Right Speaker Timeout");
                 Thread.Sleep(200);
@@ -103,7 +111,7 @@ namespace SpeakerMicAutoTestApi
                     PlayAndRecord(WavFileName, Channel.HeadSet);
                 });
 
-                headset.Wait(7000);
+                headset.Wait(AudioTimeout);
                 if (!headset.IsCompleted)
                     throw new Exception("Play Headset Timeout");
                 Thread.Sleep(200);
@@ -121,6 +129,7 @@ namespace SpeakerMicAutoTestApi
                 return Result.ExceptionFail;
             }
 
+            MicrophoneBoost = 0.0f;
             return Result.Pass;
         }
 
@@ -131,7 +140,6 @@ namespace SpeakerMicAutoTestApi
             bool IsEqual = false;
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
-            Dictionary<int, string> di = new Dictionary<int, string>();
 
             switch (Channel)
             {
@@ -150,6 +158,7 @@ namespace SpeakerMicAutoTestApi
                     break;
             }
 
+            SetupApi.di.Clear();
             for (int n = -1; n < WaveInEvent.DeviceCount; n++)
             {
                 var caps = WaveInEvent.GetCapabilities(n);
@@ -161,9 +170,9 @@ namespace SpeakerMicAutoTestApi
                 {
                     if (caps.ManufacturerGuid.Equals(v))
                     {
-                        di.Add(n,caps.ProductName);
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
+                        SetupApi.GetLocationInformation(DeviceNumber, ProductName);
                         Console.WriteLine("Find");
                     }
                 }
@@ -176,17 +185,17 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (SetupApi.di.Count() < 2 || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (string.IsNullOrEmpty(ProductName) || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
 
-                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
-                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Value;
+                    DeviceNumber = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Key;
+                    //ProductName = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Value;
                     break;
                 case Channel.HeadSet:
                     if (string.IsNullOrEmpty(ProductName))
@@ -200,7 +209,7 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2)
+                        if (SetupApi.di.Count() < 2)
                             throw new Exception("Fan record device not found");
                     }
                     else
@@ -209,13 +218,17 @@ namespace SpeakerMicAutoTestApi
                             throw new Exception("Fan record device not found");
                     }
 
-                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Key;
-                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Value;
+                    DeviceNumber = SetupApi.di.OrderBy(e => e.Value).LastOrDefault().Key;
+                    //ProductName = SetupApi.di.OrderBy(e => e.Value).LastOrDefault().Value;
                     break;
             }
 
             WavSource.DeviceNumber = DeviceNumber;
-            Console.WriteLine("Record device ###### {0} ######", ProductName);
+            Console.WriteLine("Record device ###### {0} ######", WaveInEvent.GetCapabilities(DeviceNumber).ProductName);
+            foreach (var item in SetupApi.di.OrderBy(e => e.Value))
+            {
+                Console.WriteLine(item.Key + "   " + item.Value);
+            }
             WavSource.WaveFormat = new WaveFormat(44100, 1);
             WavSource.DataAvailable += (sender, e) =>
             {
@@ -273,7 +286,7 @@ namespace SpeakerMicAutoTestApi
             bool IsEqual = false;
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
-            Dictionary<int, string> di = new Dictionary<int, string>();
+            SetupApi = new SetupApi();
 
             switch (Channel)
             {
@@ -300,9 +313,9 @@ namespace SpeakerMicAutoTestApi
                 {
                     if (caps.ManufacturerGuid.Equals(v))
                     {
-                        di.Add(n, caps.ProductName);
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
+                        SetupApi.GetLocationInformation(DeviceNumber, ProductName);
                         Console.WriteLine("Find");
                     }
                 }
@@ -319,17 +332,17 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (SetupApi.di.Count() < 2 || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (string.IsNullOrEmpty(ProductName) || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("External audio device not found");
                     }
 
-                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Key;
-                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).FirstOrDefault().Value;
+                    DeviceNumber = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Key;
+                    //ProductName = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Value;
                     break;
                 case Channel.AudioJack:
                     if (string.IsNullOrEmpty(ProductName))
@@ -339,17 +352,17 @@ namespace SpeakerMicAutoTestApi
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;
                     if (IsEqual)
                     {
-                        if (di.Count() < 2 || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (SetupApi.di.Count() < 2 || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("Fan record device not found");
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(ProductName) || di.Where(e => e.Value.Contains(UsbAudioDeviceName)).Any())
+                        if (string.IsNullOrEmpty(ProductName) || ProductName.Contains(UsbAudioDeviceName))
                             throw new Exception("Fan record device not found");
                     }
 
-                    DeviceNumber = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Key;
-                    ProductName = di.OrderBy(e => e.Value, new AudioDeviceComparer()).LastOrDefault().Value;
+                    DeviceNumber = SetupApi.di.OrderBy(e => e.Value).LastOrDefault().Key;
+                    //ProductName = SetupApi.di.OrderBy(e => e.Value).LastOrDefault().Value;
                     break;
             }
 
@@ -357,7 +370,11 @@ namespace SpeakerMicAutoTestApi
             using (var outputDevice = new WaveOutEvent())
             {
                 outputDevice.DeviceNumber = DeviceNumber;
-                Console.WriteLine("Play device: ###### {0} ######", ProductName);
+                Console.WriteLine("Play device: ###### {0} ######", WaveOut.GetCapabilities(DeviceNumber).ProductName);
+                foreach (var item in SetupApi.di.OrderBy(e => e.Value))
+                {
+                    Console.WriteLine(item.Key + "   " + item.Value);
+                }
                 outputDevice.Init(inputReader);
                 outputDevice.PlaybackStopped += (sender, e) =>
                 {

@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using System.Runtime.InteropServices;
 
 namespace SpeakerMicAutoTestApi
 {
@@ -34,6 +35,9 @@ namespace SpeakerMicAutoTestApi
 
     public abstract class Platform
     {
+        [DllImport("MicrophoneBoost.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int setMicrophoneBoost(float CurrentDb);
+
         public enum Result
         {
             Pass,
@@ -73,9 +77,12 @@ namespace SpeakerMicAutoTestApi
         protected string InternalRecordFileName { get; set; }
         protected string LeftChannelFileName { get; set; }
         protected string RightChannelFileName { get; set; }
+        protected string FanRecordFileName { get; set; }
+        protected string AudioJackRecordFileName { get; set; }
         protected string ProductName { get; set; }
         protected int DeviceNumber { get; set; }
         protected float volume { get; set; }
+        protected int AudioTimeout { get; set; }
 
         protected WaveInEvent WavSource = null;
         protected WaveFileWriter WavSourceFile = null;
@@ -89,12 +96,15 @@ namespace SpeakerMicAutoTestApi
             internalthreshold = 18000.0;
             audiojackthreshold = 18000.0;
             fanthreshold = 18000.0;
+            AudioTimeout = 10000;
             wavfilename = GetFullPath("WinmateAudioTest.wav");
             LeftRecordFileName = GetFullPath("left.wav");
             RightRecordFileName = GetFullPath("right.wav");
             InternalRecordFileName = GetFullPath("headset.wav");
             LeftChannelFileName = GetFullPath("channel1.wav");
             RightChannelFileName = GetFullPath("channel2.wav");
+            AudioJackRecordFileName = GetFullPath("audiojack.wav");
+            FanRecordFileName = GetFullPath("fan.wav");
             DeviceNumber = 0;
             ProductName = string.Empty;
             result = new Result();
@@ -106,6 +116,17 @@ namespace SpeakerMicAutoTestApi
             internalrightintensity = -1;
             audiojackintensity = -1;
             fanintensity = -1;
+        }
+
+        public void DeleteRecordWav()
+        {
+            if (File.Exists(LeftRecordFileName)) File.Delete(LeftRecordFileName);
+            if (File.Exists(RightRecordFileName)) File.Delete(RightRecordFileName);
+            if (File.Exists(InternalRecordFileName)) File.Delete(InternalRecordFileName);
+            if (File.Exists(LeftChannelFileName)) File.Delete(LeftChannelFileName);
+            if (File.Exists(RightChannelFileName)) File.Delete(RightChannelFileName);
+            if (File.Exists(AudioJackRecordFileName)) File.Delete(AudioJackRecordFileName);
+            if (File.Exists(FanRecordFileName)) File.Delete(FanRecordFileName);
         }
 
         public double FanRecordThreshold
@@ -210,6 +231,17 @@ namespace SpeakerMicAutoTestApi
                     if (v.DataFlow == DataFlow.Render)
                         v.AudioEndpointVolume.Channels[1].VolumeLevelScalar = value / 100f;
                 }
+            }
+        }
+
+        public float MicrophoneBoost
+        {
+            set
+            {
+                if (value > 30.0f)
+                    value = 30.0f;
+
+                setMicrophoneBoost(value);
             }
         }
 
