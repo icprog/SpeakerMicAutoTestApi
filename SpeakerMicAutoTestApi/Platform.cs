@@ -12,6 +12,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using System.Diagnostics;
 
 namespace SpeakerMicAutoTestApi
 {
@@ -60,6 +64,12 @@ namespace SpeakerMicAutoTestApi
             Fan
         }
 
+        public enum AudioDeviceState : uint
+        {
+            Enable = 0x00000001,
+            Disable = 0x10000001
+        }
+
         protected double internalthreshold { get; set; }
         protected double externalthreshold { get; set; }
         protected double audiojackthreshold { get; set; }
@@ -79,10 +89,12 @@ namespace SpeakerMicAutoTestApi
         protected string RightChannelFileName { get; set; }
         protected string FanRecordFileName { get; set; }
         protected string AudioJackRecordFileName { get; set; }
+        protected string RealtekMicrophone { get; set; }
         protected string ProductName { get; set; }
         protected int DeviceNumber { get; set; }
         protected float volume { get; set; }
         protected int AudioTimeout { get; set; }
+        protected bool OriginalState { get; set; }
 
         protected WaveInEvent WavSource = null;
         protected WaveFileWriter WavSourceFile = null;
@@ -116,6 +128,8 @@ namespace SpeakerMicAutoTestApi
             internalrightintensity = -1;
             audiojackintensity = -1;
             fanintensity = -1;
+            RealtekMicrophone = "Microphone (Realtek High Definition Audio)";
+            OriginalState = false;
         }
 
         public void DeleteRecordWav()
@@ -267,6 +281,182 @@ namespace SpeakerMicAutoTestApi
             var exepath = System.AppDomain.CurrentDomain.BaseDirectory;
             Console.WriteLine(Path.Combine(exepath, path));
             return Path.Combine(exepath, path);
+        }
+
+        private static void ShowSecurity(RegistrySecurity security)
+        {
+            Console.WriteLine("\r\nCurrent access rules:\r\n");
+
+            foreach (RegistryAccessRule ar in
+                security.GetAccessRules(true, true, typeof(NTAccount)))
+            {
+                Console.WriteLine("        User: {0}", ar.IdentityReference);
+                Console.WriteLine("        Type: {0}", ar.AccessControlType);
+                Console.WriteLine("      Rights: {0}", ar.RegistryRights);
+                Console.WriteLine();
+            }
+        }
+
+        public void TakeOwnership(string key)
+        {
+            try
+            {
+                TokenManipulator.AddPrivilege("SeRestorePrivilege");
+                TokenManipulator.AddPrivilege("SeBackupPrivilege");
+                TokenManipulator.AddPrivilege("SeTakeOwnershipPrivilege");
+
+                SecurityIdentifier sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+                NTAccount account = sid.Translate(typeof(NTAccount)) as NTAccount;
+                using (var HKLM = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var Registry = HKLM.OpenSubKey(key, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.TakeOwnership))
+                {
+                    var rs = Registry.GetAccessControl(AccessControlSections.All);
+                    rs.SetOwner(account);
+                    Registry.SetAccessControl(rs);
+                }
+            }
+            finally
+            {
+                TokenManipulator.RemovePrivilege("SeRestorePrivilege");
+                TokenManipulator.RemovePrivilege("SeBackupPrivilege");
+                TokenManipulator.RemovePrivilege("SeTakeOwnershipPrivilege");
+            }
+        }
+
+        public void RemoveProtection(string key)
+        {
+            try
+            {
+                TokenManipulator.AddPrivilege("SeRestorePrivilege");
+                TokenManipulator.AddPrivilege("SeBackupPrivilege");
+                TokenManipulator.AddPrivilege("SeTakeOwnershipPrivilege");
+
+                using (var HKLM = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var Registry = HKLM.OpenSubKey(key, RegistryKeyPermissionCheck.ReadWriteSubTree, RegistryRights.ChangePermissions))
+                {
+                    var rs = Registry.GetAccessControl(AccessControlSections.All);
+                    rs.SetAccessRuleProtection(true, true);
+                    rs.AddAccessRule(new RegistryAccessRule("Users", RegistryRights.FullControl, AccessControlType.Allow));
+                    Registry.SetAccessControl(rs);
+                }
+            }
+            finally
+            {
+                TokenManipulator.RemovePrivilege("SeRestorePrivilege");
+                TokenManipulator.RemovePrivilege("SeBackupPrivilege");
+                TokenManipulator.RemovePrivilege("SeTakeOwnershipPrivilege");
+            }
+        }
+
+        public string enumerateKeys(string keyPath, string name)
+        {
+            try
+            {
+                TakeOwnership(keyPath);
+                RemoveProtection(keyPath);
+
+                using (var HKLM = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var RegKey = HKLM.OpenSubKey(keyPath))
+                {
+                    var subKeys = RegKey.GetSubKeyNames();
+                    var subNames = RegKey.GetValueNames();
+                    var MicrophoneFlag = false;
+                    var RealtekFlag = false;
+                    var test = @"High Definition Audio Device";
+                    var Microphone = @"Microphone";
+                    var keypath = string.Empty;
+
+                    foreach (var v in subNames)
+                    {
+                        if (RegKey.GetValue(v) is string)
+                        {
+                            if (RegKey.GetValue(v).ToString().Contains(test))
+                                RealtekFlag = true;
+
+                            if (RegKey.GetValue(v).ToString().Contains(Microphone))
+                                MicrophoneFlag = true;
+
+                            if (RealtekFlag && MicrophoneFlag)
+                            {
+                                Console.WriteLine(Directory.GetParent(RegKey.ToString()));
+                                keypath = Directory.GetParent(RegKey.ToString()).ToString();
+                                break;
+                            }
+                        }
+                    }
+
+                    foreach (string subKey in subKeys)
+                    {
+                        string fullPath = keyPath + "\\" + subKey;
+                        enumerateKeys(fullPath, name);
+                    }
+
+                    return keypath;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                Console.WriteLine("error path: {0}", keyPath);
+                return keyPath;
+            }
+            finally
+            {
+            }
+        }
+
+        public bool SetAudioDeviceState(string Name, bool Enable)
+        {
+            string test = "Microphone (High Definition Audio Device)";
+            bool IsEnable = false;
+
+            try
+            {
+                DeviceEnum = new MMDeviceEnumerator();
+                var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.All);
+                var device = collect.Where(e => e.FriendlyName?.Contains(Name) ?? false).FirstOrDefault();
+
+                if (device == null)
+                {
+                    Console.WriteLine("{0} not found", Name);
+                    return true;
+                }
+
+                var guid = device.ID.Split(new string[] { "{", "}", "." }, StringSplitOptions.RemoveEmptyEntries);
+                Console.WriteLine(device.FriendlyName);
+                Console.WriteLine(device.ID);
+                Console.WriteLine(guid.LastOrDefault());
+                var subkey = string.Format(@"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{{{0}}}", guid.LastOrDefault());
+                TakeOwnership(subkey);
+                RemoveProtection(subkey);
+
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = hklm.OpenSubKey(subkey, true))
+                {
+                    Console.WriteLine("DeviceState: {0}", key.GetValue("DeviceState"));
+                    IsEnable = Convert.ToUInt32(key.GetValue("DeviceState")) == Convert.ToUInt32(AudioDeviceState.Enable) ? true : false;
+
+                    if (Enable)
+                        key.SetValue("DeviceState", AudioDeviceState.Enable, RegistryValueKind.DWord);
+                    else
+                        key.SetValue("DeviceState", AudioDeviceState.Disable, RegistryValueKind.DWord);
+
+                    Console.WriteLine(IsEnable);
+                }
+
+                return IsEnable;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex);
+                Console.WriteLine(ex);
+                exception = ex;
+                return IsEnable;
+            }
+            finally
+            {
+                
+            }
         }
 
         public abstract Result RunTest();

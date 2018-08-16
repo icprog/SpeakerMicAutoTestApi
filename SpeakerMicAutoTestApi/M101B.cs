@@ -62,6 +62,8 @@ namespace SpeakerMicAutoTestApi
         {
             try
             {
+                OriginalState = SetAudioDeviceState(RealtekMicrophone, true);
+                Console.WriteLine("OriginalState: {0}", OriginalState);
                 DeleteRecordWav();
                 MicrophoneBoost = 30.0f;
                 var audiojack = Task.Factory.StartNew(() =>
@@ -91,6 +93,11 @@ namespace SpeakerMicAutoTestApi
             {
                 DeleteRecordWav();
                 MicrophoneBoost = 0.0f;
+                if (!OriginalState)
+                {
+                    Console.WriteLine("Disable");
+                    SetAudioDeviceState(RealtekMicrophone, false);
+                }
             }
 
             return Result.Pass;
@@ -169,7 +176,6 @@ namespace SpeakerMicAutoTestApi
         {
             var tcs = new TaskCompletionSource<string>();
             WavSource = new WaveInEvent();
-            bool IsEqual = false;
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
 
@@ -288,7 +294,6 @@ namespace SpeakerMicAutoTestApi
 
         protected override void PlayAndRecord(string WavFileName, Channel Channel)
         {
-            bool IsEqual = false;
             ProductName = string.Empty;
             List<Guid> AudioDeviceList = null;
             SetupApi = new SetupApi();

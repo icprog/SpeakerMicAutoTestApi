@@ -377,7 +377,7 @@ namespace SpeakerMicAutoTestApi
             uint size = 0;
             bool Success = true;
             uint i = 0;
-            int BUFFER_SIZE = 4096;
+            int BUFFER_SIZE = 2048;
             IntPtr _hDevInfo = IntPtr.Zero;
             IntPtr buffer = Marshal.AllocHGlobal(BUFFER_SIZE);
             devices.Clear();
