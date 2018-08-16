@@ -26,6 +26,9 @@ namespace SpeakerMicAutoTestApi
         Platform platform = null;        
         const string M101BProductName = "IB80";
         const string M101BModelName = "M101B";
+        const string M101BKProductName = "101B";
+        const string M101SProductName = "101S";
+        const string M101PProductName = "101P";
         const string BartecProductName = "BTZ1";
         const string M101HProductName = "IH80";
         const string M101HModelName = "M101H";
@@ -134,6 +137,18 @@ namespace SpeakerMicAutoTestApi
                 case M101HModelName:
                     platform = new M101H(IsJsonConfig);
                     Console.WriteLine("M101H");
+                    break;
+                case M101SProductName:
+                    platform = new M101H(IsJsonConfig);
+                    Console.WriteLine("M101S");
+                    break;
+                case M101BKProductName:
+                    platform = new M101B(IsJsonConfig);
+                    Console.WriteLine("M101BK");
+                    break;
+                case M101PProductName:
+                    platform = new M101B(IsJsonConfig);
+                    Console.WriteLine("M101P");
                     break;
                 default:
                     throw new Exception("Platform not support");
