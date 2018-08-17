@@ -7,7 +7,7 @@ using System.Text;
 
 namespace SpeakerMicAutoTestApi
 {
-    class SetupApi
+    public class SetupApi
     {
         static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
 
@@ -363,8 +363,7 @@ namespace SpeakerMicAutoTestApi
                     {
                         Console.WriteLine("level 3: {0}", AudioLevel3.FriendlyName);
                         Console.WriteLine("LocationPaths: {0}", AudioLevel3.LocationPaths);
-                        //if (AudioLevel3.LocationInformation.Contains("Hub_"))
-                            di.Add(DeviceNumber, AudioLevel3.LocationPaths);
+                        di.Add(DeviceNumber, AudioLevel3.LocationPaths);
                     }
                 }
             }

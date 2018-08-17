@@ -139,7 +139,7 @@ namespace SpeakerMicAutoTestApi
                     Console.WriteLine("M101H");
                     break;
                 case M101SProductName:
-                    platform = new M101H(IsJsonConfig);
+                    platform = new M101S(IsJsonConfig);
                     Console.WriteLine("M101S");
                     break;
                 case M101BKProductName:

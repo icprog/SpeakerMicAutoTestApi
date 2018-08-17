@@ -13,7 +13,7 @@ namespace SpeakerMicAutoTestApi
     public class M101H : M101B
     {
         protected List<Guid> FanRecordDeviceList;
-        SetupApi SetupApi = null;
+        protected SetupApi SetupApi = null;
 
         public M101H(bool IsJsonConfig = false)
         {

@@ -67,7 +67,7 @@ namespace SpeakerMicAutoTestApi
         public enum AudioDeviceState : uint
         {
             Enable = 0x00000001,
-            Disable = 0x10000001
+            Disable = 0x10000001,
         }
 
         protected double internalthreshold { get; set; }
@@ -414,7 +414,7 @@ namespace SpeakerMicAutoTestApi
             {
                 DeviceEnum = new MMDeviceEnumerator();
                 var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.All);
-                var device = collect.Where(e => e.FriendlyName?.Contains(Name) ?? false).FirstOrDefault();
+                var device = collect.Where(e => e.FriendlyName?.Contains(Name) ?? false);
 
                 if (device == null)
                 {
@@ -422,28 +422,36 @@ namespace SpeakerMicAutoTestApi
                     return true;
                 }
 
-                var guid = device.ID.Split(new string[] { "{", "}", "." }, StringSplitOptions.RemoveEmptyEntries);
-                Console.WriteLine(device.FriendlyName);
-                Console.WriteLine(device.ID);
-                Console.WriteLine(guid.LastOrDefault());
-                var subkey = string.Format(@"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{{{0}}}", guid.LastOrDefault());
-                TakeOwnership(subkey);
-                RemoveProtection(subkey);
-
-                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-                using (var key = hklm.OpenSubKey(subkey, true))
+                foreach (var v in device)
                 {
-                    Console.WriteLine("DeviceState: {0}", key.GetValue("DeviceState"));
-                    IsEnable = Convert.ToUInt32(key.GetValue("DeviceState")) == Convert.ToUInt32(AudioDeviceState.Enable) ? true : false;
+                    var guid = v.ID.Split(new string[] { "{", "}", "." }, StringSplitOptions.RemoveEmptyEntries);
+                    Console.WriteLine(v.FriendlyName);
+                    Console.WriteLine(v.ID);
+                    Console.WriteLine(guid.LastOrDefault());
+#if true
+                    var subkey = string.Format(@"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture\{{{0}}}", guid.LastOrDefault());
+                    TakeOwnership(subkey);
+                    RemoveProtection(subkey);
 
-                    if (Enable)
-                        key.SetValue("DeviceState", AudioDeviceState.Enable, RegistryValueKind.DWord);
-                    else
-                        key.SetValue("DeviceState", AudioDeviceState.Disable, RegistryValueKind.DWord);
+                    using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                    using (var key = hklm.OpenSubKey(subkey, true))
+                    {
+                        Console.WriteLine("DeviceState: {0}", key.GetValue("DeviceState"));
+                        if (Convert.ToUInt32(key.GetValue("DeviceState")) != Convert.ToUInt32(AudioDeviceState.Enable) 
+                            && Convert.ToUInt32(key.GetValue("DeviceState")) != Convert.ToUInt32(AudioDeviceState.Disable))
+                            continue;
 
-                    Console.WriteLine(IsEnable);
+                        IsEnable = Convert.ToUInt32(key.GetValue("DeviceState")) == Convert.ToUInt32(AudioDeviceState.Enable) ? true : false;
+
+                        if (Enable)
+                            key.SetValue("DeviceState", AudioDeviceState.Enable, RegistryValueKind.DWord);
+                        else
+                            key.SetValue("DeviceState", AudioDeviceState.Disable, RegistryValueKind.DWord);
+
+                        Console.WriteLine(IsEnable);
+                    }
+#endif
                 }
-
                 return IsEnable;
             }
             catch (Exception ex)
