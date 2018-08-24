@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -224,9 +225,10 @@ namespace SpeakerMicAutoTestApi
                     break;
                 case Channel.AudioJack:
                     ProductName = string.Empty;
+                    Regex regex = new Regex(RealtekMicrophone);
                     foreach (var v in di)
                     {
-                        if (RealtekMicrophone.Contains(v.Value))
+                        if (regex.IsMatch(v.Value))
                         {
                             DeviceNumber = v.Key;
                             ProductName = v.Value;

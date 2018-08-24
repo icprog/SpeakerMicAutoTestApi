@@ -128,7 +128,7 @@ namespace SpeakerMicAutoTestApi
             internalrightintensity = -1;
             audiojackintensity = -1;
             fanintensity = -1;
-            RealtekMicrophone = "Microphone (Realtek High Definition Audio)";
+            RealtekMicrophone = @"(Microphone \(\d*-*\s*Realtek High)";
             OriginalState = false;
         }
 
