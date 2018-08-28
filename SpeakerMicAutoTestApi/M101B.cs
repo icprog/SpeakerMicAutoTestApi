@@ -299,7 +299,7 @@ namespace SpeakerMicAutoTestApi
                     break;
                 case Channel.HeadSet:
                     if (string.IsNullOrEmpty(ProductName))
-                        throw new Exception("Digital Mic device not found");                    
+                        throw new Exception("Digital Mic device not found");
                     break;
                 case Channel.AudioJack:
                     if (string.IsNullOrEmpty(ProductName))

@@ -419,7 +419,7 @@ namespace SpeakerMicAutoTestApi
             {
                 DeviceEnum = new MMDeviceEnumerator();
                 var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Capture, state);
-                
+
                 var device = collect.Where(e => !string.IsNullOrEmpty(e.FriendlyName) && regex.IsMatch(e.FriendlyName));
 
                 if (!device.Any())
@@ -443,7 +443,7 @@ namespace SpeakerMicAutoTestApi
                     using (var key = hklm.OpenSubKey(subkey, true))
                     {
                         Console.WriteLine("DeviceState: {0}", key.GetValue("DeviceState"));
-                        if (Convert.ToUInt32(key.GetValue("DeviceState")) != Convert.ToUInt32(AudioDeviceState.Enable) 
+                        if (Convert.ToUInt32(key.GetValue("DeviceState")) != Convert.ToUInt32(AudioDeviceState.Enable)
                             && Convert.ToUInt32(key.GetValue("DeviceState")) != Convert.ToUInt32(AudioDeviceState.Disable))
                             continue;
 
@@ -471,7 +471,7 @@ namespace SpeakerMicAutoTestApi
             }
             finally
             {
-                
+
             }
         }
 

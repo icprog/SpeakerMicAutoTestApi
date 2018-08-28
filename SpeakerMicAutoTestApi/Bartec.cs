@@ -16,7 +16,7 @@ namespace SpeakerMicAutoTestApi
 
         public Bartec(bool IsJsonConfig = false)
         {
-            if(IsJsonConfig)
+            if (IsJsonConfig)
             {
                 MachineAudioDeviceList = GetConfigValue("MachineAudioDevice")
                     .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)

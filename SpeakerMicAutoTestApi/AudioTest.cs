@@ -23,7 +23,7 @@ namespace SpeakerMicAutoTestApi
             InitializePlatform(ECVersion, IsJsonConfig);
         }
 
-        Platform platform = null;        
+        Platform platform = null;
         const string M101BProductName = "IB80";
         const string M101BModelName = "M101B";
         const string M101BKProductName = "101B";
@@ -120,7 +120,7 @@ namespace SpeakerMicAutoTestApi
         }
         #endregion
 
-        void InitializePlatform(string ECVersion,bool IsJsonConfig = false)
+        void InitializePlatform(string ECVersion, bool IsJsonConfig = false)
         {
             switch (ECVersion.ToUpper())
             {
