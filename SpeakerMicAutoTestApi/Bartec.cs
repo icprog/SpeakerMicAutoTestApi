@@ -193,6 +193,8 @@ namespace SpeakerMicAutoTestApi
             {
                 DeleteRecordWav();
                 MicrophoneBoost = 0.0f;
+                LeftVolume = 100;
+                RightVolume = 100;
             }
 
             return Result.Pass;

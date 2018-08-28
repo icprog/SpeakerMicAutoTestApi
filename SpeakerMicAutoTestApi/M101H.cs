@@ -68,71 +68,6 @@ namespace SpeakerMicAutoTestApi
             return Result.Pass;
         }
 
-        public override Result RunTest()
-        {
-            try
-            {
-                DeleteRecordWav();
-                MicrophoneBoost = 30.0f;
-                var left = Task.Factory.StartNew(() =>
-                {
-                    LeftVolume = 100;
-                    RightVolume = 0;
-                    PlayAndRecord(WavFileName, Channel.Left);
-                });
-
-                left.Wait(AudioTimeout);
-                if (!left.IsCompleted)
-                    throw new Exception("Play Left Speaker Timeout");
-                Thread.Sleep(200);
-                leftintensity = CalculateRMS(LeftRecordFileName);
-                if (leftintensity < externalthreshold)
-                    return Result.LeftSpeakerFail;
-
-                var right = Task.Factory.StartNew(() =>
-                {
-                    LeftVolume = 0;
-                    RightVolume = 100;
-                    PlayAndRecord(WavFileName, Channel.Right);
-                });
-
-                right.Wait(AudioTimeout);
-                if (!right.IsCompleted)
-                    throw new Exception("Play Right Speaker Timeout");
-                Thread.Sleep(200);
-                rightintensity = CalculateRMS(RightRecordFileName);
-                if (rightintensity < externalthreshold)
-                    return Result.RightSpeakerFail;
-
-                var headset = Task.Factory.StartNew(() =>
-                {
-                    LeftVolume = 100;
-                    RightVolume = 100;
-                    PlayAndRecord(WavFileName, Channel.HeadSet);
-                });
-
-                headset.Wait(AudioTimeout);
-                if (!headset.IsCompleted)
-                    throw new Exception("Play Headset Timeout");
-                Thread.Sleep(200);
-                internalintensity = CalculateRMS(InternalRecordFileName);
-                internalleftintensity = internalintensity;
-                internalrightintensity = internalintensity;
-                if (internalintensity < internalthreshold)
-                    return Result.InternalMicFail;
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine(ex);
-                Console.WriteLine(ex);
-                exception = ex;
-                return Result.ExceptionFail;
-            }
-
-            MicrophoneBoost = 0.0f;
-            return Result.Pass;
-        }
-
         protected override Task<string> Record(Channel Channel)
         {
             var tcs = new TaskCompletionSource<string>();
@@ -172,6 +107,10 @@ namespace SpeakerMicAutoTestApi
                     {
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
+
+                        if (!di.ContainsKey(DeviceNumber))
+                            di.Add(DeviceNumber, ProductName);
+
                         SetupApi.GetLocationInformation(DeviceNumber, ProductName);
                         Console.WriteLine("Find");
                     }
@@ -204,6 +143,20 @@ namespace SpeakerMicAutoTestApi
                 case Channel.AudioJack:
                     if (string.IsNullOrEmpty(ProductName))
                         throw new Exception("Audio Jack device not found");
+
+                    ProductName = string.Empty;
+                    Regex regex = new Regex(PinkMicrophone);
+                    foreach (var v in di)
+                    {
+                        Console.WriteLine(v.Key);
+                        Console.WriteLine(v.Value);
+                        if (regex.IsMatch(v.Value))
+                        {
+                            Console.WriteLine("PinkMicrophone Match");
+                            DeviceNumber = v.Key;
+                            ProductName = v.Value;
+                        }
+                    }
                     break;
                 case Channel.Fan:
                     IsEqual = ExternalAudioDeviceList.Except(FanRecordDeviceList).Count() == 0;

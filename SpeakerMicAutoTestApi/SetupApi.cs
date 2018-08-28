@@ -363,7 +363,8 @@ namespace SpeakerMicAutoTestApi
                     {
                         Console.WriteLine("level 3: {0}", AudioLevel3.FriendlyName);
                         Console.WriteLine("LocationPaths: {0}", AudioLevel3.LocationPaths);
-                        di.Add(DeviceNumber, AudioLevel3.LocationPaths);
+                        if (!di.ContainsKey(DeviceNumber))
+                            di.Add(DeviceNumber, AudioLevel3.LocationPaths);
                     }
                 }
             }

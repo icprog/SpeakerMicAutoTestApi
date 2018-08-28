@@ -1,5 +1,6 @@
 ﻿using IniParser;
 using IniParser.Model;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -8,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,38 +21,62 @@ namespace SpeakerMicAutoTestApi
         protected List<Guid> MachineAudioDeviceList;
         protected List<Guid> ExternalAudioDeviceList;
         protected List<Guid> DigitalMicDeviceList;
+        protected Dictionary<int, string> di;
         SetupApi SetupApi = null;
 
         public M101B(bool IsJsonConfig = false)
         {
             UsbAudioDeviceName = "USB Audio";
+            di = new Dictionary<int, string>();
 
             if (IsJsonConfig)
             {
-                MachineAudioDeviceList = GetConfigValue("MachineAudioDevice")
+                var sMachineAudioDeviceList = GetConfigValue("MachineAudioDevice")
                     .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
                     .Where(e => !string.IsNullOrWhiteSpace(e))
-                    .ToList()
-                    .ConvertAll(Guid.Parse);
+                    .ToList();
 
-                ExternalAudioDeviceList = GetConfigValue("ExternalAudioDevice")
-                    .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
-                    .Where(e => !string.IsNullOrWhiteSpace(e))
-                    .ToList()
-                    .ConvertAll(Guid.Parse);
+                if (sMachineAudioDeviceList.Any())
+                    MachineAudioDeviceList = sMachineAudioDeviceList.ConvertAll(Guid.Parse);
 
-                DigitalMicDeviceList = GetConfigValue("DigitalMicDevice")
+                var sExternalAudioDeviceList = GetConfigValue("ExternalAudioDevice")
                     .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
                     .Where(e => !string.IsNullOrWhiteSpace(e))
-                    .ToList()
-                    .ConvertAll(Guid.Parse);
+                    .ToList();
+
+                if (sExternalAudioDeviceList.Any())
+                    ExternalAudioDeviceList = sExternalAudioDeviceList.ConvertAll(Guid.Parse);
+
+                var sDigitalMicDeviceList = GetConfigValue("DigitalMicDevice")
+                    .Split(new string[] { "\"", "[", "]", "," }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToList();
+
+                if (sDigitalMicDeviceList.Any())
+                {
+                    Guid guid = Guid.Empty;
+                    DigitalMicDeviceList = sDigitalMicDeviceList.Where(e => Guid.TryParse(e, out guid)).Select(e => guid).ToList();
+                }
+
             }
             else
             {
-                MachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
-                ExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList().ConvertAll(Guid.Parse);
-                DigitalMicDeviceList = GetIniValue("AUDIO", "DigitalMicDevice").Split(',').ToList().ConvertAll(Guid.Parse);
-            }            
+                var sMachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList();
+                var sExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList();
+                var sDigitalMicDeviceList = GetIniValue("AUDIO", "DigitalMicDevice").Split(',').ToList();
+
+                if (sMachineAudioDeviceList.Any())
+                    MachineAudioDeviceList = sMachineAudioDeviceList.ConvertAll(Guid.Parse);
+
+                if (sExternalAudioDeviceList.Any())
+                    ExternalAudioDeviceList = sExternalAudioDeviceList.ConvertAll(Guid.Parse);
+
+                if (sDigitalMicDeviceList.Any())
+                {
+                    Guid guid = Guid.Empty;
+                    DigitalMicDeviceList = sDigitalMicDeviceList.Where(e => Guid.TryParse(e, out guid)).Select(e => guid).ToList();
+                }
+            }
         }
 
         public override Result FanTest()
@@ -60,10 +86,20 @@ namespace SpeakerMicAutoTestApi
 
         public override Result AudioJackTest()
         {
+            bool IsPinkMicrophone = false;
             try
             {
-                OriginalState = SetAudioDeviceState(RealtekMicrophone, true);
-                Console.WriteLine("OriginalState: {0}", OriginalState);
+                OriginalState = SetAudioDeviceState(PinkMicrophone, true, out Success, DeviceState.Disabled);
+                Console.WriteLine("PinkMicrophone OriginalState: {0}", OriginalState);
+                Console.WriteLine("PinkMicrophone Success: {0}", Success);
+                IsPinkMicrophone = Success;
+                if (!Success)
+                {
+                    OriginalState = SetAudioDeviceState(RealtekMicrophone, true, out Success, DeviceState.Disabled);
+                    Console.WriteLine("RealtekMicrophone OriginalState: {0}", OriginalState);
+                    Console.WriteLine("RealtekMicrophone Success: {0}", Success);
+                }
+
                 DeleteRecordWav();
                 MicrophoneBoost = 30.0f;
                 var audiojack = Task.Factory.StartNew(() =>
@@ -96,19 +132,22 @@ namespace SpeakerMicAutoTestApi
                 if (!OriginalState)
                 {
                     Console.WriteLine("Disable");
-                    SetAudioDeviceState(RealtekMicrophone, false);
+                    if (IsPinkMicrophone)
+                        SetAudioDeviceState(PinkMicrophone, false, out Success, DeviceState.Active);
+                    else
+                        SetAudioDeviceState(RealtekMicrophone, false, out Success, DeviceState.Active);
                 }
             }
 
             return Result.Pass;
         }
-
         public override Result RunTest()
         {
             try
             {
                 DeleteRecordWav();
                 MicrophoneBoost = 30.0f;
+
                 var left = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 100;
@@ -139,22 +178,50 @@ namespace SpeakerMicAutoTestApi
                 if (rightintensity < externalthreshold)
                     return Result.RightSpeakerFail;
 
-                var headset = Task.Factory.StartNew(() =>
+                if (DigitalMicDeviceList.Any())
                 {
-                    LeftVolume = 100;
-                    RightVolume = 100;
-                    PlayAndRecord(WavFileName, Channel.HeadSet);
+                    var headset = Task.Factory.StartNew(() =>
+                    {
+                        LeftVolume = 100;
+                        RightVolume = 100;
+                        PlayAndRecord(WavFileName, Channel.HeadSet);
+                    });
+
+                    headset.Wait(AudioTimeout);
+                    if (!headset.IsCompleted)
+                        throw new Exception("Play Headset Timeout");
+                    Thread.Sleep(200);
+                    internalintensity = CalculateRMS(InternalRecordFileName);
+                    internalleftintensity = internalintensity;
+                    internalrightintensity = internalintensity;
+                    if (internalintensity < internalthreshold)
+                        return Result.InternalMicFail;
+                }
+                else
+                {
+                    internalintensity = internalthreshold + 1;
+                    internalleftintensity = internalintensity;
+                    internalrightintensity = internalintensity;
+                }
+
+                var mute = Task.Factory.StartNew(() =>
+                {
+                    LeftVolume = 0;
+                    RightVolume = 0;
+                    PlayAndRecord(WavFileName, Channel.Left);
                 });
 
-                headset.Wait(AudioTimeout);
-                if (!headset.IsCompleted)
-                    throw new Exception("Play Headset Timeout");
+                mute.Wait(AudioTimeout);
+                if (!mute.IsCompleted)
+                    throw new Exception("Mute Timeout");
                 Thread.Sleep(200);
-                internalintensity = CalculateRMS(InternalRecordFileName);
-                internalleftintensity = internalintensity;
-                internalrightintensity = internalintensity;
-                if (internalintensity < internalthreshold)
-                    return Result.InternalMicFail;
+                var muteintensity = CalculateRMS(LeftRecordFileName);
+                if (muteintensity >= externalthreshold)
+                {
+                    leftintensity = -1;
+                    rightintensity = -1;
+                    return Result.LeftSpeakerFail;
+                }
             }
             catch (Exception ex)
             {
@@ -167,6 +234,8 @@ namespace SpeakerMicAutoTestApi
             {
                 DeleteRecordWav();
                 MicrophoneBoost = 0.0f;
+                LeftVolume = 100;
+                RightVolume = 100;
             }
 
             return Result.Pass;
@@ -207,6 +276,10 @@ namespace SpeakerMicAutoTestApi
                     {
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
+
+                        if (!di.ContainsKey(DeviceNumber))
+                            di.Add(DeviceNumber, ProductName);
+
                         SetupApi.GetLocationInformation(DeviceNumber, ProductName);
                         Console.WriteLine("Find");
                     }
@@ -226,11 +299,23 @@ namespace SpeakerMicAutoTestApi
                     break;
                 case Channel.HeadSet:
                     if (string.IsNullOrEmpty(ProductName))
-                        throw new Exception("Digital Mic device not found");
+                        throw new Exception("Digital Mic device not found");                    
                     break;
                 case Channel.AudioJack:
                     if (string.IsNullOrEmpty(ProductName))
                         throw new Exception("Audio Jack device not found");
+
+                    ProductName = string.Empty;
+                    Regex regex = new Regex(PinkMicrophone);
+                    foreach (var v in di)
+                    {
+                        if (regex.IsMatch(v.Value))
+                        {
+                            Console.WriteLine("PinkMicrophone Match");
+                            DeviceNumber = v.Key;
+                            ProductName = v.Value;
+                        }
+                    }
                     break;
             }
 

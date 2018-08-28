@@ -90,11 +90,13 @@ namespace SpeakerMicAutoTestApi
         protected string FanRecordFileName { get; set; }
         protected string AudioJackRecordFileName { get; set; }
         protected string RealtekMicrophone { get; set; }
+        protected string PinkMicrophone { get; set; }
         protected string ProductName { get; set; }
         protected int DeviceNumber { get; set; }
         protected float volume { get; set; }
         protected int AudioTimeout { get; set; }
         protected bool OriginalState { get; set; }
+        protected bool Success = false;
 
         protected WaveInEvent WavSource = null;
         protected WaveFileWriter WavSourceFile = null;
@@ -129,6 +131,7 @@ namespace SpeakerMicAutoTestApi
             audiojackintensity = -1;
             fanintensity = -1;
             RealtekMicrophone = @"(Microphone \(\d*-*\s*Realtek High)";
+            PinkMicrophone = @"(Mic in at rear panel \(Pink\) \(\d*-*\s*Re)";
             OriginalState = false;
         }
 
@@ -405,18 +408,21 @@ namespace SpeakerMicAutoTestApi
             }
         }
 
-        public bool SetAudioDeviceState(string Name, bool Enable)
+        public bool SetAudioDeviceState(string Name, bool Enable, out bool Success, DeviceState state)
         {
             string test = "Microphone (High Definition Audio Device)";
             bool IsEnable = false;
+            Success = false;
+            Regex regex = new Regex(Name);
 
             try
             {
                 DeviceEnum = new MMDeviceEnumerator();
-                var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.All);
-                var device = collect.Where(e => e.FriendlyName?.Contains(Name) ?? false);
+                var collect = DeviceEnum.EnumerateAudioEndPoints(DataFlow.Capture, state);
+                
+                var device = collect.Where(e => !string.IsNullOrEmpty(e.FriendlyName) && regex.IsMatch(e.FriendlyName));
 
-                if (device == null)
+                if (!device.Any())
                 {
                     Console.WriteLine("{0} not found", Name);
                     return true;
@@ -452,6 +458,7 @@ namespace SpeakerMicAutoTestApi
                     }
 #endif
                 }
+                Success = true;
                 return IsEnable;
             }
             catch (Exception ex)
@@ -459,6 +466,7 @@ namespace SpeakerMicAutoTestApi
                 Trace.WriteLine(ex);
                 Console.WriteLine(ex);
                 exception = ex;
+                Success = false;
                 return IsEnable;
             }
             finally

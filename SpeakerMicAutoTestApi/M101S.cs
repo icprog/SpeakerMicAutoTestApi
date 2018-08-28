@@ -13,7 +13,6 @@ namespace SpeakerMicAutoTestApi
     public class M101S : M101H
     {
         protected string RealtekDigitalMicrophone { get; set; }
-        protected Dictionary<int, string> di;
 
         public M101S(bool IsJsonConfig = false)
         {
@@ -193,7 +192,10 @@ namespace SpeakerMicAutoTestApi
                     {
                         DeviceNumber = n;
                         ProductName = caps.ProductName;
-                        di.Add(DeviceNumber, ProductName);
+
+                        if (!di.ContainsKey(DeviceNumber))
+                            di.Add(DeviceNumber, ProductName);
+
                         SetupApi.GetLocationInformation(DeviceNumber, ProductName);
                         Console.WriteLine("Find");
                     }
