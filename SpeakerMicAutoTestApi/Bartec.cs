@@ -181,6 +181,25 @@ namespace SpeakerMicAutoTestApi
                 internalrightintensity = CalculateRMS(RightChannelFileName);
                 if (internalrightintensity < internalthreshold)
                     return Result.InternalRightMicFail;
+
+                var mute = Task.Factory.StartNew(() =>
+                {
+                    LeftVolume = 0;
+                    RightVolume = 0;
+                    PlayAndRecord(WavFileName, Channel.Left);
+                });
+
+                mute.Wait(AudioTimeout);
+                if (!mute.IsCompleted)
+                    throw new Exception("Mute Timeout");
+                Thread.Sleep(200);
+                var muteintensity = CalculateRMS(LeftRecordFileName);
+                if (muteintensity >= externalthreshold)
+                {
+                    leftintensity = -1;
+                    rightintensity = -1;
+                    return Result.LeftSpeakerFail;
+                }
             }
             catch (Exception ex)
             {
