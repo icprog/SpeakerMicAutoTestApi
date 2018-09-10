@@ -86,22 +86,24 @@ namespace SpeakerMicAutoTestApi
 
         public void Callmmsyscpl()
         {
-            bool Run = true;
+            var tokenSource = new CancellationTokenSource();
+            var token = tokenSource.Token;
 
-            Task.Factory.StartNew(() =>
+            var rundll32 = Task.Factory.StartNew(() =>
             {
-                while (Run)
+                while (!token.IsCancellationRequested)
                 {
                     var recordcpl = Process.GetProcessesByName("rundll32");
                     if (recordcpl.Any())
                     {
+                        Thread.Sleep(1000);
                         recordcpl.FirstOrDefault().Kill();
-                        Run = false;
+                        tokenSource.Cancel();
                     }
 
-                    Thread.Sleep(500);
+                    Thread.Sleep(100);
                 }
-            });
+            }, token);
 
             using (var process = new Process())
             {
@@ -110,8 +112,8 @@ namespace SpeakerMicAutoTestApi
                 psi.Arguments = ",1";
                 process.StartInfo = psi;
                 process.Start();
-                process.WaitForExit(AudioTimeout);
-                Thread.Sleep(1000);
+                rundll32.Wait(AudioTimeout);
+                tokenSource.Cancel();
             }            
         }
 
