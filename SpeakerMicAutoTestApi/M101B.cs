@@ -84,11 +84,43 @@ namespace SpeakerMicAutoTestApi
             throw new NotImplementedException();
         }
 
+        public void Callmmsyscpl()
+        {
+            bool Run = true;
+
+            Task.Factory.StartNew(() =>
+            {
+                while (Run)
+                {
+                    var recordcpl = Process.GetProcessesByName("rundll32");
+                    if (recordcpl.Any())
+                    {
+                        recordcpl.FirstOrDefault().Kill();
+                        Run = false;
+                    }
+
+                    Thread.Sleep(500);
+                }
+            });
+
+            using (var process = new Process())
+            {
+                var psi = new ProcessStartInfo();
+                psi.FileName = "mmsys.cpl";
+                psi.Arguments = ",1";
+                process.StartInfo = psi;
+                process.Start();
+                process.WaitForExit(AudioTimeout);
+                Thread.Sleep(1000);
+            }            
+        }
+
         public override Result AudioJackTest()
         {
             bool IsPinkMicrophone = false;
             try
             {
+                Callmmsyscpl();
                 OriginalState = SetAudioDeviceState(PinkMicrophone, true, out Success, DeviceState.Disabled);
                 Console.WriteLine("PinkMicrophone OriginalState: {0}", OriginalState);
                 Console.WriteLine("PinkMicrophone Success: {0}", Success);
@@ -424,7 +456,7 @@ namespace SpeakerMicAutoTestApi
 
                     if (string.IsNullOrEmpty(ProductName) || ProductName.Contains(UsbAudioDeviceName))
                         throw new Exception("External audio device not found");
-
+                
                     DeviceNumber = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Key;
                     //ProductName = SetupApi.di.OrderBy(e => e.Value).FirstOrDefault().Value;
                     break;
