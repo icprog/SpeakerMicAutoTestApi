@@ -93,7 +93,8 @@ namespace SpeakerMicAutoTestApi
         protected string PinkMicrophone { get; set; }
         protected string ProductName { get; set; }
         protected int DeviceNumber { get; set; }
-        protected float volume { get; set; }
+        protected int builtinaudiovolume { get; set; }
+        protected int externalaudiovolume { get; set; }
         protected int AudioTimeout { get; set; }
         protected bool OriginalState { get; set; }
         protected bool Success = false;
@@ -268,6 +269,17 @@ namespace SpeakerMicAutoTestApi
             parser.Parser.Configuration.CommentString = ";";
             var FilePath = Assembly.GetEntryAssembly().Location;
             IniData data = parser.ReadFile(Path.Combine(Directory.GetParent(FilePath).FullName, "TestProgramConfig.ini"));
+            var FormatKey = string.Format("{0}.{1}", SectionName, Key);
+            Console.WriteLine(data.GetKey(FormatKey));
+            return data.GetKey(FormatKey);
+        }
+
+        protected string GetProductIniValue(string SectionName, string Key)
+        {
+            var parser = new FileIniDataParser();
+            parser.Parser.Configuration.CommentString = ";";
+            var FilePath = Assembly.GetEntryAssembly().Location;
+            IniData data = parser.ReadFile(Path.Combine(Directory.GetParent(FilePath).FullName, "TestProgramConfigProductInfo.ini"));
             var FormatKey = string.Format("{0}.{1}", SectionName, Key);
             Console.WriteLine(data.GetKey(FormatKey));
             return data.GetKey(FormatKey);

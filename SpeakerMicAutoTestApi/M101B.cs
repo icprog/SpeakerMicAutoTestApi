@@ -61,6 +61,9 @@ namespace SpeakerMicAutoTestApi
             }
             else
             {
+                builtinaudiovolume = Convert.ToInt32(GetProductIniValue("AUDIO", "BuiltinAudioVolume"));
+                externalaudiovolume = Convert.ToInt32(GetProductIniValue("AUDIO", "ExternalAudioVolume"));
+
                 var sMachineAudioDeviceList = GetIniValue("AUDIO", "MachineAudioDevice").Split(',').ToList();
                 var sExternalAudioDeviceList = GetIniValue("AUDIO", "ExternalAudioDevice").Split(',').ToList();
                 var sDigitalMicDeviceList = GetIniValue("AUDIO", "DigitalMicDevice").Split(',').ToList();
@@ -184,7 +187,7 @@ namespace SpeakerMicAutoTestApi
 
                 var left = Task.Factory.StartNew(() =>
                 {
-                    LeftVolume = 100;
+                    LeftVolume = builtinaudiovolume;
                     RightVolume = 0;
                     PlayAndRecord(WavFileName, Channel.Left);
                 });
@@ -200,7 +203,7 @@ namespace SpeakerMicAutoTestApi
                 var right = Task.Factory.StartNew(() =>
                 {
                     LeftVolume = 0;
-                    RightVolume = 100;
+                    RightVolume = builtinaudiovolume;
                     PlayAndRecord(WavFileName, Channel.Right);
                 });
 
@@ -216,8 +219,8 @@ namespace SpeakerMicAutoTestApi
                 {
                     var headset = Task.Factory.StartNew(() =>
                     {
-                        LeftVolume = 100;
-                        RightVolume = 100;
+                        LeftVolume = externalaudiovolume;
+                        RightVolume = externalaudiovolume;
                         PlayAndRecord(WavFileName, Channel.HeadSet);
                     });
 
@@ -268,8 +271,8 @@ namespace SpeakerMicAutoTestApi
             {
                 DeleteRecordWav();
                 MicrophoneBoost = 0.0f;
-                LeftVolume = 100;
-                RightVolume = 100;
+                LeftVolume = builtinaudiovolume;
+                RightVolume = builtinaudiovolume;
             }
 
             return Result.Pass;
